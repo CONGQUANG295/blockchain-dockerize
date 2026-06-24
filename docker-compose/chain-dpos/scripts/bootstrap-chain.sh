@@ -4,6 +4,21 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+SKIP_GENESIS=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --skip-genesis) SKIP_GENESIS=true ;;
+    -h|--help)
+      echo "Usage: $0 [--skip-genesis]"
+      echo "  --skip-genesis  Skip Phase A (genesis already prepared on operator machine)"
+      exit 0
+      ;;
+    *) echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
 wait_for_rpc() {
   local url="${1:-http://127.0.0.1:8545}"
   echo "Waiting for RPC at ${url}..."
@@ -20,8 +35,16 @@ wait_for_rpc() {
   exit 1
 }
 
-echo "=== Phase A: prepare genesis ==="
-./scripts/prepare-genesis.sh
+if [ "${SKIP_GENESIS}" = true ]; then
+  if [ ! -f genesis/validator-1.address ]; then
+    echo "Missing genesis/validator-1.address — run prepare-genesis.sh locally or omit --skip-genesis" >&2
+    exit 1
+  fi
+  echo "=== Phase A: skipped (genesis prepared) ==="
+else
+  echo "=== Phase A: prepare genesis ==="
+  ./scripts/prepare-genesis.sh
+fi
 
 export VALIDATOR_1_ADDRESS="$(cat genesis/validator-1.address)"
 set -a

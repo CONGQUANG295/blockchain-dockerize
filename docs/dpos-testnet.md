@@ -39,6 +39,8 @@ cp envs/deploy.env.example envs/deploy.env
 ./scripts/deploy-all.sh --with-traefik
 ```
 
+**Deploy lên server qua Docker Hub (không clone git trên server):** xem **[remote-deploy.md](./remote-deploy.md)** — `prepare-deploy.sh` local → `sync-to-server.sh` → `deploy-validator.sh` / `deploy-dapps.sh` trên server.
+
 | Flag | Ý nghĩa |
 |------|---------|
 | `--chain-only` | Chỉ Phase A–F (validator-1), không bật DApps |

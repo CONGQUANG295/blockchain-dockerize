@@ -11,6 +11,7 @@ Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of 
 | Tài liệu | Mô tả |
 |----------|--------|
 | **[dpos-testnet.md](./dpos-testnet.md)** | **Runbook deploy chain mới — Phase A→F** |
+| **[remote-deploy.md](./remote-deploy.md)** | **Deploy lên server qua Docker Hub (prepare local, sync bundle)** |
 | [POA](./poa.md) | Triển khai PoA (Geth + bootnode) |
 | **[explorer-v11.md](./explorer-v11.md)** | **Explorer DPoS (backend 11.2.1 + frontend 2.8.1)** |
 | [Blockscout v4](./explorer-v4.1.8.md) | Explorer monolith (POA legacy) |
