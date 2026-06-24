@@ -22,7 +22,7 @@ fat_db = "on"
 
 [account]
 unlock = ["__VALIDATOR_ADDRESS__"]
-password = ["/app/genesis/validator-1/node.pwd"]
+password = ["/app/secrets/node.pwd"]
 
 [mining]
 force_sealing = true

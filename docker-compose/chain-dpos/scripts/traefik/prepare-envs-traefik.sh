@@ -9,10 +9,10 @@ if [ ! -e envs/traefik.env ]; then
   echo "Created envs/traefik.env — edit domains and ACME_EMAIL before starting Traefik."
 fi
 
-mkdir -p ../../data/traefik/letsencrypt ../../data/proxy/docs
-if [ ! -f ../../data/traefik/letsencrypt/acme.json ]; then
-  touch ../../data/traefik/letsencrypt/acme.json
-  chmod 600 ../../data/traefik/letsencrypt/acme.json
+mkdir -p data/traefik/letsencrypt data/proxy/docs
+if [ ! -f data/traefik/letsencrypt/acme.json ]; then
+  touch data/traefik/letsencrypt/acme.json
+  chmod 600 data/traefik/letsencrypt/acme.json
 fi
 
-echo "Traefik env ready. Next: docker compose -f compose-dapps-traefik-v4.yml config"
+echo "Traefik env ready."

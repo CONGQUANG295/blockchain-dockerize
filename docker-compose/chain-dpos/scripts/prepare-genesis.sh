@@ -2,11 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/icsc-dpos-contracts"
-GENESIS_DIR="${ROOT_DIR}/genesis"
-ENVS_DIR="${ROOT_DIR}/envs"
+# shellcheck source=lib/paths.sh
+source "${ROOT_DIR}/scripts/lib/paths.sh"
+chain_dpos_paths "${ROOT_DIR}"
+chain_dpos_ensure_node_dirs
 
-mkdir -p "${GENESIS_DIR}/validator-1/keystore" "${ROOT_DIR}/config"
+CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/icsc-dpos-contracts"
+ENVS_DIR="${ROOT_DIR}/envs"
 
 for f in dpos.chain.env dpos.contract.env; do
   if [ ! -f "${ENVS_DIR}/${f}" ]; then
@@ -48,7 +50,7 @@ DPOS_CONTRACT_ENV="${ENVS_DIR}/dpos.contract.env" \
   node "${CONTRACTS_DIR}/scripts/generate-contract-config.js"
 
 echo "Generating validator keystore..."
-VALIDATOR_1_ADDRESS="$("${ROOT_DIR}/scripts/gen-validator-account.sh" "${GENESIS_DIR}")"
+VALIDATOR_1_ADDRESS="$("${ROOT_DIR}/scripts/gen-validator-account.sh" "${PATH_NODE_VALIDATOR}")"
 
 VALIDATOR_1_ADDRESS="$(echo "${VALIDATOR_1_ADDRESS}" | tr '[:upper:]' '[:lower:]')"
 PREMINE_LC="$(echo "${PREMINE_ADDRESS}" | tr '[:upper:]' '[:lower:]')"
@@ -58,7 +60,7 @@ if [ "${VALIDATOR_1_ADDRESS}" = "${PREMINE_LC}" ]; then
   exit 1
 fi
 
-echo "${VALIDATOR_1_ADDRESS}" > "${GENESIS_DIR}/validator-1.address"
+echo "${VALIDATOR_1_ADDRESS}" > "${PATH_VALIDATOR_ADDRESS}"
 export VALIDATOR_1_ADDRESS
 
 echo "Generating spec.json phase-1..."
@@ -66,12 +68,13 @@ node "${CONTRACTS_DIR}/scripts/generate-spec.js" \
   --phase=1 \
   --env "${ENVS_DIR}/dpos.chain.env" \
   --validator "${VALIDATOR_1_ADDRESS}" \
-  --out "${GENESIS_DIR}/spec.json"
+  --out "${PATH_SPEC}"
 
-cp "${GENESIS_DIR}/spec.json" "${GENESIS_DIR}/spec.phase-1.json"
+cp "${PATH_SPEC}" "${PATH_GENESIS}/spec.phase-1.json"
 
 "${ROOT_DIR}/scripts/prepare-envs-validator-1.sh"
 
 echo "Genesis ready:"
 echo "  validator: ${VALIDATOR_1_ADDRESS}"
-echo "  spec:      ${GENESIS_DIR}/spec.json"
+echo "  spec:      ${PATH_SPEC}"
+echo "  node:      ${PATH_NODE_VALIDATOR}/"

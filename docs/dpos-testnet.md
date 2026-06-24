@@ -48,7 +48,7 @@ cp envs/deploy.env.example envs/deploy.env
 
 **Thành phần mới so với v1:**
 
-- **RPC node riêng** (`config/rpc.toml`) — archive, peer tới validator-1 enode; Blockscout đọc RPC qua `rpc.host`.
+- **RPC node riêng** (`nodes/rpc/config.toml`) — archive, peer tới validator-1 enode; Blockscout đọc RPC qua `rpc.host`.
 - **Blockscout v11** — backend 11.2.1 + frontend 2.8.1 + stats + visualizer (3 hostname Traefik).
 - **Faucet** — chỉ `NETWORK_TYPE=testnet`; wallet tự sinh (`genesis/faucet-wallet.export`).
 
@@ -64,9 +64,9 @@ Build images v11 trước khi deploy (xem [explorer-v11.md](./explorer-v11.md)).
 
 ### Di chuyển validator-1 sang server khác (outline)
 
-1. Dừng validator-1, backup named volumes (`openethereum_db`, keystore).
+1. Dừng validator-1, backup `nodes/validator-1/data/` và `nodes/validator-1/keystore/`.
 2. Restore trên host mới; cập nhật P2P port/firewall.
-3. Trên **rpc-node**, sửa `config/rpc.toml` → `reserved_peers` trỏ enode validator-1 mới.
+3. Trên **rpc-node**, cập nhật `nodes/rpc/reserved-peers.txt` (hoặc chạy lại `prepare-rpc-node.sh`) với enode validator-1 mới.
 4. Restart rpc-node + kiểm tra sync (`./scripts/health-check.sh`).
 
 ---
@@ -131,7 +131,7 @@ docker build . -t eth-faucet:0.0.1 -f docker/Dockerfile.eth-faucet
 docker build . -t docs-poa:0.0.1 -f docker/Dockerfile.docs-poa
 ```
 
-> **Lưu ý:** Image `openethereum:0.0.1` dùng binary `openethereum/openethereum:v3.3.5` trên Alpine. RPC phải bind `interface = "all"` trong `config/validator-1.toml` để deployer và DApps trong Docker network gọi được.
+> **Lưu ý:** RPC phải bind `interface = "all"` trong `nodes/validator-1/config.toml` để deployer và DApps trong Docker network gọi được.
 
 ---
 
@@ -220,22 +220,23 @@ Script thực hiện:
 3. Tạo keystore validator-1 (`gen-validator-account.sh` → `generate-validator-key.js`)
 4. Sinh `genesis/spec.json` **phase-1** (validator list tĩnh, premine treasury + validator balance, chưa có `safeContract`)
 5. Lưu backup `genesis/spec.phase-1.json`
-6. Render `config/validator-1.toml` và `envs/validator-1.env` từ template
+6. Render `nodes/validator-1/config.toml` và `envs/validator-1.env` từ template
 
 **Artifacts sau Phase A:**
 
 ```
 genesis/
-├── spec.json              # Spec phase-1
-├── spec.phase-1.json      # Backup
-├── validator-1.address    # Địa chỉ validator (lowercase)
-├── validator-1/
-│   ├── keystore/          # UTC--... keystore file
-│   └── node.pwd           # Password unlock account
-config/
-└── validator-1.toml       # OpenEthereum config (engine_signer = validator)
-envs/
-└── validator-1.env        # VALIDATOR_ADDRESS, paths (auto-generated)
+├── spec.json
+├── spec.phase-1.json
+├── validator-1.address
+├── validator-1.enode              # sau get_enode.sh
+└── contract-addresses.json        # sau deploy
+
+nodes/validator-1/
+├── config.toml
+├── keystore/                      # UTC--* file
+├── node.pwd
+└── data/                          # chain DB (sau khi chạy node)
 ```
 
 Ghi lại địa chỉ validator:
@@ -271,7 +272,7 @@ docker logs -f dpos-testnet-validator-1
 - Chain đang mine với validator list tĩnh (phase-1)
 - **Chưa** chạy `validator-app` (chỉ bật sau transition)
 - Block number tăng dần; cần đảm bảo còn đủ block trước `CONTRACT_TRANSITION_BLOCK`
-- Chain DB lưu trong Docker volume `dpos-validator-1_openethereum_db` (không ra host)
+- Chain DB lưu trong `nodes/validator-1/data/` (bind mount)
 
 ---
 
@@ -288,7 +289,7 @@ docker compose -f compose-deploy-contracts.yml run --rm deployer
 
 Deployer container:
 - Kết nối RPC qua network `dpos-validator-1_default` → `http://openethereum:8545`
-- **Ký giao dịch bằng keystore validator-1** (mount từ `genesis/validator-1/keystore` + `node.pwd`)
+- **Ký giao dịch bằng keystore validator-1** (mount từ `nodes/validator-1/keystore` + `node.pwd`)
 - Script `2_deploy_contract.js` yêu cầu deployer address = `INITIAL_VALIDATOR_ADDRESS` (validator-1)
 - Set `INITIAL_VALIDATOR_ADDRESS` = validator-1
 - Ghi kết quả vào `genesis/contract-addresses.json`
@@ -504,16 +505,16 @@ docker compose -f compose-validator-1.yml down -v
 docker compose -f compose-dapps-traefik-v4.yml down -v
 
 # Xoá genesis và config đã sinh
-rm -rf genesis/* config/validator-1.toml envs/validator-1.env
+rm -rf genesis/* nodes/validator-1 nodes/rpc envs/validator-1.env
 
 # Tuỳ chọn: xoá data DApps trên host
-rm -rf ../../data/dpos-blockscout-db ../../data/proxy/docs
+rm -rf data/dpos-blockscout-db data/proxy/docs
 
 # Đổi NETWORK_ID / NETWORK_NAME trong dpos.chain.env nếu cần chain mới
 ./scripts/bootstrap-chain.sh
 ```
 
-> **Cảnh báo:** Không xoá `genesis/validator-1/keystore` nếu muốn giữ cùng địa chỉ validator trên chain đã chạy production.
+> **Cảnh báo:** Không xoá `nodes/validator-1/keystore` nếu muốn giữ cùng địa chỉ validator trên chain đã chạy production.
 
 ---
 

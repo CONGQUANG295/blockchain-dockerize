@@ -2,15 +2,17 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENODE_FILE="${ROOT_DIR}/genesis/validator-1.enode"
-TEMPLATE="${ROOT_DIR}/config/rpc.toml.template"
-OUT="${ROOT_DIR}/config/rpc.toml"
+# shellcheck source=lib/paths.sh
+source "${ROOT_DIR}/scripts/lib/paths.sh"
+chain_dpos_paths "${ROOT_DIR}"
+chain_dpos_ensure_node_dirs
 
-if [ ! -f "${ENODE_FILE}" ]; then
-  echo "Missing ${ENODE_FILE}. Run get_enode.sh after bootstrap." >&2
+if [ ! -f "${PATH_VALIDATOR_ENODE}" ]; then
+  echo "Missing ${PATH_VALIDATOR_ENODE}. Run get_enode.sh after bootstrap." >&2
   exit 1
 fi
 
-ENODE="$(tr -d '\n' < "${ENODE_FILE}")"
-sed "s|__VALIDATOR_1_ENODE__|${ENODE}|g" "${TEMPLATE}" > "${OUT}"
-echo "Wrote ${OUT}"
+cp "${PATH_TEMPLATES}/rpc.toml.template" "${PATH_RPC_CONFIG}"
+cp "${PATH_VALIDATOR_ENODE}" "${PATH_RESERVED_PEERS}"
+echo "Wrote ${PATH_RPC_CONFIG}"
+echo "Wrote ${PATH_RESERVED_PEERS}"

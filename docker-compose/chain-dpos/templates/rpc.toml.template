@@ -4,7 +4,7 @@ base_path = "/app/data"
 
 [network]
 port = 30301
-reserved_peers = ["__VALIDATOR_1_ENODE__"]
+reserved_peers = "/app/config/reserved-peers.txt"
 
 [rpc]
 cors = ["all"]

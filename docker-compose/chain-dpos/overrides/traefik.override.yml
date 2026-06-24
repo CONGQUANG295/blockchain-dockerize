@@ -9,7 +9,7 @@ services:
     environment:
       - ACME_EMAIL=${ACME_EMAIL}
     volumes:
-      - ../../data/traefik/letsencrypt:/letsencrypt
+      - ../data/traefik/letsencrypt:/letsencrypt
       - ../chain-dpos/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ../chain-dpos/traefik/dynamic:/etc/traefik/dynamic:ro
     ports:

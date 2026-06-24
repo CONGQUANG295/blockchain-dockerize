@@ -11,10 +11,10 @@ services:
       - NETWORK_TYPE=${NETWORK_TYPE:-testnet}
     volumes:
       - ../chain-dpos/proxy:/etc/nginx/templates
-      - ../../data/proxy/conf.d:/etc/nginx/conf.d
-      - ../../data/proxy/docs:/var/www/docs
-      - ../../data/certbot/config/:/etc/nginx/ssl/:ro
-      - ../../data/certbot/www/:/var/www/certbot/:ro
+      - ../data/proxy/conf.d:/etc/nginx/conf.d
+      - ../data/proxy/docs:/var/www/docs
+      - ../data/certbot/config/:/etc/nginx/ssl/:ro
+      - ../data/certbot/www/:/var/www/certbot/:ro
     ports: !override
       - 80:80
       - 443:443

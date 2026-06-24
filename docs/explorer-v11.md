@@ -84,7 +84,8 @@ docker compose -f compose-dapps-traefik-v11.yml --profile faucet up -d   # testn
 |------|---------|
 | `data/dpos-blockscout-db/` | Blockscout Postgres |
 | `data/dpos-stats-db/` | Stats Postgres |
-| `data/dpos-rpc/` | Archive RPC node chain data |
+| `nodes/rpc/data/` | Archive RPC node chain data |
+| `nodes/validator-1/data/` | Validator chain data |
 
 ## Migration from v4 monolith
 

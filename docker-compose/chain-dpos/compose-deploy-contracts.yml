@@ -12,13 +12,13 @@ services:
       DPOS_RPC_URL: http://openethereum:8545
       INITIAL_VALIDATOR_ADDRESS: ${VALIDATOR_1_ADDRESS}
       INITIAL_SUPPLY_GWEI: ${INITIAL_SUPPLY_GWEI}
-      CONTRACT_ADDRESSES_OUT: /genesis/contract-addresses.json
-      VALIDATOR_KEYSTORE_DIR: /validator/keystore
-      VALIDATOR_PASSWORD_FILE: /validator/node.pwd
+      CONTRACT_ADDRESSES_OUT: /app/genesis/contract-addresses.json
+      VALIDATOR_KEYSTORE_DIR: /app/keys
+      VALIDATOR_PASSWORD_FILE: /app/secrets/node.pwd
     volumes:
-      - ./genesis:/genesis
-      - ./genesis/validator-1/keystore:/validator/keystore:ro
-      - ./genesis/validator-1/node.pwd:/validator/node.pwd:ro
+      - ./genesis:/app/genesis
+      - ./nodes/validator-1/keystore:/app/keys:ro
+      - ./nodes/validator-1/node.pwd:/app/secrets/node.pwd:ro
     command: scripts/2_deploy_contract.js --network dpos_local
     networks:
       - validator

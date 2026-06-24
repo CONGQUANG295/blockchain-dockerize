@@ -2,7 +2,7 @@ name: dpos-validator-1
 
 include:
   - path:
-      - ../services/compose-openethereum.yml
+      - ../services/compose-openethereum-node.yml
       - ../services/compose-netstats-api.yml
       - ./overrides/validator-1.override.yml
     env_file:
@@ -29,6 +29,8 @@ services:
       BLOCK_REWARD_ADDRESS: ${BLOCK_REWARD_PROXY:-}
       LOG_LEVEL: info
       MIN_GAS_PRICE: "10000000000"
+      KEYSTORE_DIR: /app/keys
+      PASSWORD_FILE: /app/secrets/node.pwd
     volumes:
-      - ./genesis/validator-1/keystore:/app/config/keys/${NETWORK_NAME}:ro
-      - ./genesis/validator-1/node.pwd:/app/config/pass.pwd:ro
+      - ./nodes/validator-1/keystore:/app/keys:ro
+      - ./nodes/validator-1/node.pwd:/app/secrets/node.pwd:ro

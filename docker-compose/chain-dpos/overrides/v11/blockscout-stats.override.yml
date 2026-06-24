@@ -1,12 +1,12 @@
 services:
   stats-db-init:
     volumes:
-      - ../../../data/dpos-stats-db:/var/lib/postgresql/data
+      - ../data/dpos-stats-db:/var/lib/postgresql/data
   stats-db:
     environment:
       POSTGRES_PASSWORD: ${STATS_DB_PASSWORD:-changeme}
     volumes:
-      - ../../../data/dpos-stats-db:/var/lib/postgresql/data
+      - ../data/dpos-stats-db:/var/lib/postgresql/data
   stats:
     depends_on:
       stats-db:

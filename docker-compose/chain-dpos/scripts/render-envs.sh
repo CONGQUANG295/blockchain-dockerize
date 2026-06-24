@@ -148,7 +148,7 @@ DISABLE_MARKET=true
 EOF
 
 cat > "${ENVS_DIR}/rpc.env" <<EOF
-OE_CONFIG_PATH=/app/config/rpc.toml
+OE_CONFIG_PATH=/app/config/config.toml
 EOF
 
 cat > "${ENVS_DIR}/blockscout-frontend.env" <<EOF

@@ -8,11 +8,18 @@ envs/*.env
 genesis/*
 !genesis/.gitkeep
 
+nodes/validator-1/
+nodes/rpc/
+!nodes/.gitkeep
+
+# Legacy paths (pre nodes/ layout)
 config/validator-1.toml
 config/rpc.toml
+config/reserved-peers.txt
 
 envs/deploy.env
 genesis/faucet-wallet.export
 traefik/dynamic/blockscout-v11.yml
 
-data/
+data/*
+!data/.gitkeep

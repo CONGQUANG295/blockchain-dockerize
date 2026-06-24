@@ -4,8 +4,10 @@ services:
     env_file:
       - ../chain-dpos/envs/rpc.env
     environment:
-      OE_CONFIG_PATH: /app/config/rpc.toml
-    volumes:
+      OE_CONFIG_PATH: /app/config/config.toml
+    volumes: !override
       - ../chain-dpos/genesis/spec.json:/app/genesis/spec.json:ro
-      - ../chain-dpos/config/rpc.toml:/app/config/rpc.toml:ro
+      - ../chain-dpos/nodes/rpc/config.toml:/app/config/config.toml:ro
+      - ../chain-dpos/nodes/rpc/reserved-peers.txt:/app/config/reserved-peers.txt:ro
+      - ../chain-dpos/nodes/rpc/data:/app/data
     ports: !override []

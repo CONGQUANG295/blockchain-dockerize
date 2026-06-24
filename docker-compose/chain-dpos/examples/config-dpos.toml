@@ -1,3 +1,6 @@
+# Validator node — seal block, unlock engine_signer account.
+# RPC node dùng config-dpos-rpc.toml (không có [account]/[mining], bật [websockets]).
+
 [parity]
 chain = "./spec/spec.json"
 base_path = "./nodes/validator1/"

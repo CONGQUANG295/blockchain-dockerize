@@ -29,7 +29,7 @@ Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of 
 | Deploy flow | Genesis tĩnh một lần | **Hai pha spec:** phase-1 → deploy on-chain → phase-2 |
 | DApps | Blockscout, RPC, faucet, netstats | Dùng chung stack, trỏ RPC OpenEthereum |
 | Thư mục Docker | `chain-poa/` | `chain-dpos/` |
-| Lưu chain DB | Bind mount `data/${NETWORK_TYPE}/…` | Docker named volumes (`openethereum_db`, …) |
+| Lưu chain DB | Bind mount `nodes/*/data/` | Bind mount `nodes/*/data/` |
 
 Consensus DPoS tách **staking/governance** (on-chain contracts) và **block production** (OpenEthereum AuthorityRound + validator-app gửi cycle txs).
 
@@ -76,35 +76,41 @@ flowchart TB
 
 ```
 docker-compose/chain-dpos/
-├── compose-validator-1.yml       # Validator + netstats-api + validator-app
-├── compose-deploy-contracts.yml  # One-shot Hardhat deploy
-├── compose-dapps-traefik-v11.yml  # Explorer v11, RPC archive node, Traefik
-├── compose-dapps-traefik-v4.yml   # Legacy v4 monolith (reference)
-├── compose-validator-2.yml       # Stub — validator remote (v2)
-├── envs/
-│   ├── dpos.chain.env.example    # NETWORK_ID, premine, validator balance, transition
-│   ├── dpos.contract.env.example # Stake, inflation, cycle
-│   ├── traefik.env.example       # Domain + ACME email
-│   └── *.env.example             # DApps, blockscout, netstats, …
-├── genesis/                      # Sinh bởi prepare-genesis.sh (gitignored)
-├── config/
-│   └── validator-1.toml.template
+├── compose-validator-1.yml
+├── compose-deploy-contracts.yml
+├── compose-dapps-traefik-v11.yml
+├── envs/                         # deploy.env + rendered *.env
+├── genesis/                      # Chain artifacts (spec, addresses, enode)
+├── nodes/                        # Per-node runtime (config, keys, chain DB)
+│   ├── validator-1/
+│   │   ├── config.toml
+│   │   ├── keystore/
+│   │   ├── node.pwd
+│   │   └── data/                 # OpenEthereum chain DB (bind mount)
+│   └── rpc/
+│       ├── config.toml
+│       ├── reserved-peers.txt
+│       └── data/
+├── data/                         # DApps persistent data (Postgres, Traefik TLS)
+├── templates/                    # OpenEthereum config templates (committed)
 ├── scripts/
-│   ├── bootstrap-chain.sh        # Phase A–F tự động
-│   ├── prepare-genesis.sh        # Phase A
-│   ├── patch-spec-after-deploy.sh
-│   ├── restart-validator-1.sh
-│   ├── verify-contracts-transition.sh
-│   ├── get_enode.sh
-│   ├── prepare-envs-dapps.sh
-│   ├── prepare-envs-validator-1.sh
-│   ├── gen-validator-account.sh
-│   └── traefik/prepare-envs-traefik.sh
-├── traefik/                      # Static config + middlewares
-├── overrides/                    # Mount genesis, keystore, Traefik labels
+│   ├── lib/paths.sh              # Unified path constants
+│   └── migrate-runtime-layout.sh # One-time migration from old layout
+├── traefik/
+├── overrides/
 └── examples/
-    └── config-dpos.toml          # Tham khảo local (không dùng trực tiếp trong compose)
 ```
+
+| Lớp | Host path | Container path (mọi service) |
+|-----|-----------|-------------------------------|
+| Chain spec | `genesis/spec.json` | `/app/genesis/spec.json` |
+| Node config | `nodes/*/config.toml` | `/app/config/config.toml` |
+| Keystore | `nodes/validator-1/keystore/` | `/app/keys` (deployer, validator-app) hoặc `/app/data/keys/${NETWORK_NAME}` (OpenEthereum) |
+| Password | `nodes/validator-1/node.pwd` | `/app/secrets/node.pwd` |
+| Chain DB | `nodes/*/data/` | `/app/data` |
+| DApps DB | `data/dpos-*-db/` | Postgres data dir |
+
+Deploy từ thư mục `chain-dpos/` trên server. Chạy `./scripts/migrate-runtime-layout.sh` nếu nâng cấp từ layout cũ (`genesis/validator-1/`, `config/`, `docker-compose/data/`).
 
 ## Quy trình triển khai (tóm tắt)
 
@@ -152,13 +158,19 @@ docker build . -t eth-faucet:0.0.1 -f docker/Dockerfile.eth-faucet
 
 ## Config OpenEthereum
 
-Template: `config/validator-1.toml.template` — render bởi `prepare-envs-validator-1.sh` sau Phase A.
+| Node | Template | Render output |
+|------|----------|---------------|
+| Validator-1 | `templates/validator-1.toml.template` | `nodes/validator-1/config.toml` |
+| RPC (archive) | `templates/rpc.toml.template` | `nodes/rpc/config.toml` |
 
-Điểm quan trọng:
+### Validator-1
 
 ```toml
 [rpc]
 interface = "all"    # Bắt buộc cho Docker network
+
+[websockets]
+disable = true
 
 [mining]
 force_sealing = true
@@ -167,23 +179,39 @@ reseal_on_txs = "none"
 
 [account]
 unlock = ["<VALIDATOR_ADDRESS>"]
-password = ["/app/genesis/validator-1/node.pwd"]
+password = ["/app/secrets/node.pwd"]
 ```
+
+### RPC node
+
+```toml
+[network]
+reserved_peers = "/app/config/reserved-peers.txt"
+
+[websockets]
+disable = false
+interface = "all"
+port = 8546
+```
+
+`prepare-rpc-node.sh` copy `genesis/validator-1.enode` → `nodes/rpc/reserved-peers.txt`.
 
 ### Mount volumes (validator-1)
 
 | Host | Container | Mục đích |
 |------|-----------|----------|
 | `genesis/spec.json` | `/app/genesis/spec.json` | Chain spec |
-| `genesis/validator-1/keystore/` | `/app/data/keys/${NETWORK_NAME}` | Keystore OpenEthereum |
-| `genesis/validator-1/node.pwd` | `/app/genesis/validator-1/node.pwd` | Password unlock |
-| `config/validator-1.toml` | `/app/config/validator-1.toml` | Client config |
-
-Chain database lưu trong Docker volume `openethereum_db` (không bind mount ra host như POA).
+| `nodes/validator-1/keystore/` | `/app/data/keys/${NETWORK_NAME}` | Keystore OpenEthereum |
+| `nodes/validator-1/node.pwd` | `/app/secrets/node.pwd` | Password unlock |
+| `nodes/validator-1/config.toml` | `/app/config/config.toml` | Client config |
+| `nodes/validator-1/data/` | `/app/data` | Chain database |
 
 ### validator-app
 
-Keystore mount: `genesis/validator-1/keystore` → `/app/config/keys/${NETWORK_NAME}`.
+```
+nodes/validator-1/keystore  →  /app/keys          (KEYSTORE_DIR)
+nodes/validator-1/node.pwd  →  /app/secrets/node.pwd  (PASSWORD_FILE)
+```
 
 Cần export proxy addresses trước khi start:
 
@@ -209,7 +237,7 @@ Reuse từ `chain-poa`: `docker-compose/services/*`, pattern overrides trong `ov
 
 ## Validator-2 và mở rộng
 
-- **Không bootnode:** peering qua `reserved_peers` + enode validator-1 (`genesis/validator-1.enode`).
+- **Không bootnode:** peering qua `nodes/rpc/reserved-peers.txt` (nguồn từ `genesis/validator-1.enode`).
 - Validator-2 chạy trên server khác: outline `scripts/setup-validator-2-remote.sh` (chưa implement v1).
 - Validator mới cần stake `MIN_STAKE_TOKENS` qua Consensus contract.
 
