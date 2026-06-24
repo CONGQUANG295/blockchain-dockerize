@@ -1,0 +1,19 @@
+name: dpos-custom-staking
+
+services:
+  staking-keeper:
+    profiles: [custom-staking]
+    image: ${STAKING_KEEPER_IMAGE:-staking-keeper:0.0.1}
+    pull_policy: always
+    container_name: dpos-staking-keeper
+    env_file:
+      - ./envs/images.env
+      - ./envs/staking-keeper.env
+    restart: unless-stopped
+    networks:
+      - validator
+
+networks:
+  validator:
+    external: true
+    name: ${COMPOSE_PROJECT_NAME:-dpos-validator-1}_default

@@ -2,6 +2,8 @@
 
 DPoS chains use **Blockscout backend 11.2.1** + **frontend 2.8.1** with optional **stats** and **visualizer** microservices behind Traefik.
 
+For optional GTBS branding and DPoS widgets, see [explorer-custom-theme.md](./explorer-custom-theme.md).
+
 > **Note:** POA reference stacks may still use Blockscout v4 monolith. See [explorer-v4.1.8.md](./explorer-v4.1.8.md).
 
 ## Architecture
@@ -45,7 +47,7 @@ Local build (without Docker Hub):
 
 ```bash
 cd ../../../blockchain-docker-base
-./scripts/build-and-push.sh
+./scripts/build-and-push.sh --explorer
 ```
 
 Stats and visualizer use upstream images by default (`ghcr.io/blockscout/stats`, `ghcr.io/blockscout/visualizer`). Override tags in `deploy.env` → `images.env`.

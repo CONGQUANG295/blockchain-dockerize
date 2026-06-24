@@ -34,7 +34,13 @@ docker compose -f compose-validator-1.yml up -d openethereum netstats-api
 wait_for_rpc
 
 echo "=== Phase C: deploy contracts ==="
-COMPOSE_PROJECT_NAME=dpos-validator-1 docker compose -f compose-deploy-contracts.yml run --rm deployer
+set -a
+# shellcheck disable=SC1090
+source envs/deploy.env 2>/dev/null || true
+set +a
+COMPOSE_PROJECT_NAME=dpos-validator-1 docker compose -f compose-deploy-contracts.yml run --rm \
+  -e "ENABLE_CUSTOM_STAKING=${ENABLE_CUSTOM_STAKING:-false}" \
+  deployer
 
 echo "=== Phase D: patch spec + restart ==="
 ./scripts/patch-spec-after-deploy.sh

@@ -1,0 +1,9 @@
+# Optional GTBS explorer branding overlay.
+# Usage (with EXPLORER_CUSTOM_PROFILE=gtbs in deploy.env):
+#   docker compose -f compose-dapps-traefik-v11.yml \
+#     -f overrides/v11/blockscout-frontend-gtbs.override.yml up -d
+
+services:
+  frontend:
+    volumes:
+      - ../../assets/explorer/gtbs:/app/public/assets/configs:ro

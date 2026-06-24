@@ -1,0 +1,28 @@
+[
+  {
+    "title": "Support",
+    "links": [
+      {
+        "text": "Documentation",
+        "url": "https://docs.gtbs.org"
+      },
+      {
+        "text": "Status",
+        "url": "https://status.example.com"
+      }
+    ]
+  },
+  {
+    "title": "Community",
+    "links": [
+      {
+        "text": "Twitter",
+        "url": "https://twitter.com/gtbs"
+      },
+      {
+        "text": "Telegram",
+        "url": "https://t.me/gtbs"
+      }
+    ]
+  }
+]

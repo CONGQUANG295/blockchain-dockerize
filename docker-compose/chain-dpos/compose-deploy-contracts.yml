@@ -15,11 +15,12 @@ services:
       CONTRACT_ADDRESSES_OUT: /app/genesis/contract-addresses.json
       VALIDATOR_KEYSTORE_DIR: /app/keys
       VALIDATOR_PASSWORD_FILE: /app/secrets/node.pwd
+      ENABLE_CUSTOM_STAKING: ${ENABLE_CUSTOM_STAKING:-false}
     volumes:
       - ./genesis:/app/genesis
       - ./nodes/validator-1/keystore:/app/keys:ro
       - ./nodes/validator-1/node.pwd:/app/secrets/node.pwd:ro
-    command: scripts/2_deploy_contract.js --network dpos_local
+    command: []
     networks:
       - validator
 

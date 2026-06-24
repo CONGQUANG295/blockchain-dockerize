@@ -1,0 +1,4 @@
+envs/*.env
+!envs/*.env.example
+
+traefik/dynamic/blockscout-v5.yml

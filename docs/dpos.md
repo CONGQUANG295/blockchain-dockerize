@@ -1,6 +1,6 @@
 # Chain DPoS Docker Integration
 
-Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of Stake) bằng Docker trong hệ thống ICSC.
+Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of Stake) bằng Docker trong hệ thống DPoS.
 
 > **Trạng thái:** `docker-compose/chain-dpos/` sẵn sàng cho testnet v1 (1 validator, không bootnode).
 >
@@ -144,16 +144,12 @@ Deploy + patch + restart **phải xong trước** `CONTRACT_TRANSITION_BLOCK`.
 
 ## Images cần build
 
-Từ `blockchain-docker-base`:
+Từ `blockchain-docker-base` (xem [`README.md`](../../blockchain-docker-base/README.md)):
 
 ```bash
-docker build . -t openethereum:0.0.1 -f docker/Dockerfile.openethereum
-docker build . -t validator-app:0.0.1 -f docker/Dockerfile.validator-app
-docker build . -t dpos-deployer:0.0.1 -f docker/Dockerfile.dpos-deployer
-docker build . -t netstats-api:0.0.1 -f docker/Dockerfile.netstats-api
-docker build . -t blockscout-base:4.1.8 -f docker/Dockerfile.blockscout-base-4.1.8
-docker build . -t netstats-dashboard:0.0.1 -f docker/Dockerfile.netstats-dashboard
-docker build . -t eth-faucet:0.0.1 -f docker/Dockerfile.eth-faucet
+./scripts/build-and-push.sh --chain      # openethereum, validator-app, dpos-deployer, netstats-api
+./scripts/build-and-push.sh --explorer   # blockscout-backend:11.2.1, blockscout-frontend:2.8.1 (+ legacy)
+./scripts/build-and-push.sh --dapps      # netstats-dashboard, eth-faucet (testnet), docs-poa
 ```
 
 ## Config OpenEthereum
@@ -246,7 +242,8 @@ Reuse từ `chain-poa`: `docker-compose/services/*`, pattern overrides trong `ov
 | Vấn đề | Hướng xử lý |
 |--------|-------------|
 | Validator không seal block | `engine_signer`, unlock account, `force_sealing`, keystore mount đúng `${NETWORK_NAME}` |
-| Deploy lỗi "Deployer must be validator-1" | Deployer phải ký bằng keystore validator-1; kiểm tra `VALIDATOR_BALANCE_WEI` đủ gas |
+| Deploy lỗi "Deployer must be validator-1" | Deployer phải ký bằng keystore validator-1 |
+| Deploy lỗi gas / out of funds | Chỉ xảy ra khi `ENABLE_EIP1559=true`; tăng `VALIDATOR_BALANCE_WEI` hoặc tắt EIP-1559 (deploy zero-gas) |
 | Deploy quá muộn (sau transition block) | Tạo chain mới; tăng `CONTRACT_TRANSITION_BLOCK` |
 | RPC unreachable từ deployer | `interface = "all"` trong validator-1.toml |
 | Blockscout không sync | `CHAIN_ID`, RPC URL, variant `openethereum` |
@@ -259,4 +256,4 @@ Chi tiết: [dpos-testnet.md §14](./dpos-testnet.md#14-troubleshooting).
 - [dpos-testnet.md](./dpos-testnet.md) — Runbook deploy đầy đủ
 - [POA](./poa.md)
 - [Design](../design.md)
-- [blockchain-docker-base](https://gitlab.icsc.vn/quyenduy/blockchain-docker-base) — build images
+- [blockchain-docker-base](https://gitlab.vn/quyenduy/blockchain-docker-base) — build images

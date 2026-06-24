@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/icsc-dpos-contracts"
+CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/dpos-contracts"
 GENESIS_DIR="${ROOT_DIR}/genesis"
 ENVS_DIR="${ROOT_DIR}/envs"
 ADDRESSES_FILE="${GENESIS_DIR}/contract-addresses.json"
@@ -11,6 +11,8 @@ if [ ! -f "${ADDRESSES_FILE}" ]; then
   echo "Missing ${ADDRESSES_FILE} — run deploy first" >&2
   exit 1
 fi
+
+# GTBS custom staking uses the same keys: consensusProxy, blockRewardProxy (+ stakingVault in JSON)
 
 CONSENSUS="$(node -e "console.log(JSON.parse(require('fs').readFileSync('${ADDRESSES_FILE}','utf8')).consensusProxy)")"
 REWARD="$(node -e "console.log(JSON.parse(require('fs').readFileSync('${ADDRESSES_FILE}','utf8')).blockRewardProxy)")"

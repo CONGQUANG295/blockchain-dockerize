@@ -88,6 +88,24 @@ CYCLE_DURATION_SECONDS=${CYCLE_DURATION_SECONDS:-172800}
 INFLATION_PERCENT=${INFLATION_PERCENT:-5}
 EOF
 
+if [ "${ENABLE_CUSTOM_STAKING:-false}" = "true" ]; then
+  GTBS_SRC="${ROOT_DIR}/../../../blockchain-docker-base/resources/custom-staking-contracts/env/gtbs-staking.env.example"
+  if [ -f "${GTBS_SRC}" ]; then
+    cp "${GTBS_SRC}" "${ENVS_DIR}/gtbs-staking.env"
+    # Override from deploy.env when set
+    for key in MAX_STAKE_TOKENS MIN_DELEGATION_TOKENS MAX_DELEGATION_PER_WALLET_TOKENS NET_APY_PERCENT ANNUAL_UNLOCK_CAP_TOKENS UNSTAKE_FEE_BPS DELEGATOR_LOCK_DAYS ANNUAL_UNLOCK_PERIOD_DAYS RELEASE_DELAY_DAYS BLOCK_TIME_SECONDS BLOCKS_PER_YEAR; do
+      val="${!key:-}"
+      if [ -n "${val}" ]; then
+        if grep -q "^${key}=" "${ENVS_DIR}/gtbs-staking.env"; then
+          sed -i "s|^${key}=.*|${key}=${val}|" "${ENVS_DIR}/gtbs-staking.env"
+        else
+          echo "${key}=${val}" >> "${ENVS_DIR}/gtbs-staking.env"
+        fi
+      fi
+    done
+  fi
+fi
+
 cat > "${ENVS_DIR}/db.env" <<EOF
 POSTGRES_DB=${POSTGRES_DB}
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -167,9 +185,25 @@ NEXT_PUBLIC_NETWORK_CURRENCY_NAME=${COIN_NAME}
 NEXT_PUBLIC_NETWORK_CURRENCY_SYMBOL=${COIN_SYMBOL}
 NEXT_PUBLIC_NETWORK_CURRENCY_DECIMALS=18
 NEXT_PUBLIC_IS_TESTNET=${NEXT_PUBLIC_IS_TESTNET}
+NEXT_PUBLIC_BLOCK_TIME_SECONDS=${BLOCK_TIME_SECONDS}
 NEXT_PUBLIC_HOMEPAGE_CHARTS=['daily_txs']
 NEXT_PUBLIC_API_SPEC_URL=https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
 EOF
+
+if [ -n "${EXPLORER_HERO_TITLE:-}" ]; then
+  echo "NEXT_PUBLIC_HOMEPAGE_HERO_TITLE=${EXPLORER_HERO_TITLE}" >> "${ENVS_DIR}/blockscout-frontend.env"
+fi
+
+if [ "${EXPLORER_CUSTOM_PROFILE:-}" = "gtbs" ]; then
+  GTBS_FRONTEND_EXAMPLE="${ROOT_DIR}/envs/blockscout-frontend.gtbs.env.example"
+  GTBS_BACKEND_EXAMPLE="${ROOT_DIR}/envs/blockscout-backend.gtbs.env.example"
+  if [ -f "${GTBS_FRONTEND_EXAMPLE}" ]; then
+    grep -v '^#' "${GTBS_FRONTEND_EXAMPLE}" | grep -v '^$' >> "${ENVS_DIR}/blockscout-frontend.env"
+  fi
+  if [ -f "${GTBS_BACKEND_EXAMPLE}" ]; then
+    grep -v '^#' "${GTBS_BACKEND_EXAMPLE}" | grep -v '^$' >> "${ENVS_DIR}/blockscout-backend.env"
+  fi
+fi
 
 cat > "${ENVS_DIR}/blockscout-stats.env" <<EOF
 STATS_DB_PASSWORD=${STATS_DB_PASSWORD}

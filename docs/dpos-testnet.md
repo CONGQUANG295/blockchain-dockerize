@@ -4,7 +4,7 @@ Tài liệu operator chi tiết để **tạo và deploy chain DPoS mới** từ
 
 ## Tổng quan luồng deploy
 
-Chain DPoS ICSC dùng **hai pha spec** (theo mô hình Fuse Network):
+Chain DPoS dùng **hai pha spec** (theo mô hình Fuse Network):
 
 ```mermaid
 flowchart LR
@@ -104,7 +104,7 @@ Build images v11 trước khi deploy (xem [explorer-v11.md](./explorer-v11.md)).
 
 ```
 blockchain-dock/
-├── blockchain-docker-base/     # Build images + icsc-dpos-contracts
+├── blockchain-docker-base/     # Build images + dpos-contracts
 └── blockchain-dockerize/
     └── docker-compose/chain-dpos/   # Thư mục làm việc chính
 ```
@@ -118,18 +118,20 @@ Chạy từ thư mục `blockchain-docker-base`:
 ```bash
 cd blockchain-docker-base
 
-# Bắt buộc cho chain DPoS
-docker build . -t openethereum:0.0.1 -f docker/Dockerfile.openethereum
-docker build . -t validator-app:0.0.1 -f docker/Dockerfile.validator-app
-docker build . -t dpos-deployer:0.0.1 -f docker/Dockerfile.dpos-deployer
-docker build . -t netstats-api:0.0.1 -f docker/Dockerfile.netstats-api
+# Chain core (validator, deployer, netstats-api trên node)
+./scripts/build-and-push.sh --chain
 
-# Bắt buộc nếu deploy DApps
-docker build . -t blockscout-base:4.1.8 -f docker/Dockerfile.blockscout-base-4.1.8
-docker build . -t netstats-dashboard:0.0.1 -f docker/Dockerfile.netstats-dashboard
-docker build . -t eth-faucet:0.0.1 -f docker/Dockerfile.eth-faucet
-docker build . -t docs-poa:0.0.1 -f docker/Dockerfile.docs-poa
+# Blockscout explorer v11 (+ legacy nếu cần)
+./scripts/build-and-push.sh --explorer
+
+# DApps còn lại (netstats dashboard, faucet testnet, docs)
+./scripts/build-and-push.sh --dapps
+
+# Hoặc build tất cả
+./scripts/build-and-push.sh
 ```
+
+Chi tiết nhóm image: [`blockchain-docker-base/README.md`](../../blockchain-docker-base/README.md).
 
 > **Lưu ý:** RPC phải bind `interface = "all"` trong `nodes/validator-1/config.toml` để deployer và DApps trong Docker network gọi được.
 
@@ -157,13 +159,20 @@ cp envs/dpos.contract.env.example envs/dpos.contract.env
 | `CONTRACT_TRANSITION_BLOCK` | Có | Block chuyển sang consensus contract; deploy + patch phải xong trước block này |
 | `PREMINE_ADDRESS` | Có | Địa chỉ treasury; **phải khác** `VALIDATOR_1_ADDRESS` (tự sinh ở Phase A) |
 | `PREMINE_BALANCE_WEI` | Có | Số dư genesis của treasury (wei) |
-| `VALIDATOR_BALANCE_WEI` | Có | Số dư genesis của validator-1 — dùng trả gas khi deploy contracts |
+| `VALIDATOR_BALANCE_WEI` | Có | Số dư genesis validator-1. Chỉ cần lớn khi deploy xảy ra **sau** `EIP1559_TRANSITION_BLOCK` (ví dụ `EIP1559_TRANSITION_BLOCK=0` hoặc `< CONTRACT_TRANSITION_BLOCK` nhưng deploy chậm). Nếu `EIP1559_TRANSITION_BLOCK > CONTRACT_TRANSITION_BLOCK` thì deploy zero-gas |
 | `INITIAL_SUPPLY_GWEI` | Có | Truyền vào `BlockReward.initialize` khi deploy |
+| `ENABLE_EIP1559` | Không | `true` để bật London/EIP-1559 trong `spec.json` (mặc định tắt) |
+| `EIP1559_TRANSITION_BLOCK` | Khi bật EIP-1559 | Block kích hoạt EIP-1559 (mặc định `0` = từ genesis) |
+| `EIP1559_BASE_FEE_INITIAL_VALUE` | Không | Base fee khởi tạo, hex wei (mặc định `0x3B9ACA00` = 1 gwei) |
+| `EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR` | Không | Mặc định `0x8` (chuẩn Ethereum) |
+| `EIP1559_ELASTICITY_MULTIPLIER` | Không | Mặc định `0x2` (chuẩn Ethereum) |
+| `EIP1559_BASE_FEE_MIN_VALUE` | Không | Sàn base fee tùy chọn (hex wei) |
+| `EIP1559_FEE_COLLECTOR` | Không | Địa chỉ thu phí base fee thay vì burn (tùy chọn) |
 
 **Ví dụ mặc định trong `dpos.chain.env.example`:**
 
 ```env
-NETWORK_NAME=ICSC-DPOS-Testnet
+NETWORK_NAME=DPOS-Testnet
 NETWORK_ID=0x3a1
 NETWORK_TYPE=testnet
 BLOCK_TIME_SECONDS=5
@@ -180,6 +189,26 @@ INITIAL_SUPPLY_GWEI=300000000
 BLOCK_TIME_SECONDS=2
 CONTRACT_TRANSITION_BLOCK=50
 ```
+
+**Ví dụ bật EIP-1559 từ genesis:**
+
+```env
+ENABLE_EIP1559=true
+EIP1559_TRANSITION_BLOCK=0
+```
+
+> **Lưu ý gas khi deploy (Phase C):**
+> - **Không bật EIP-1559 (mặc định):** OpenEthereum AuthorityRound cho phép `gasPrice=0`. Deploy **không tốn phí gas**.
+> - **Bật EIP-1559:** quy tắc gas phụ thuộc **block hiện tại** so với `EIP1559_TRANSITION_BLOCK`, không chỉ cờ `ENABLE_EIP1559`:
+>
+>   | Điều kiện | Deploy (Phase C) |
+>   |-----------|------------------|
+>   | `current_block < EIP1559_TRANSITION_BLOCK` | `gasPrice=0` — **đúng kể cả khi `EIP1559_TRANSITION_BLOCK > CONTRACT_TRANSITION_BLOCK`** |
+>   | `current_block >= EIP1559_TRANSITION_BLOCK` | Phải trả `baseFeePerGas`; cần `VALIDATOR_BALANCE_WEI` đủ lớn |
+>
+>   Vì deploy luôn xảy ra khi `current_block < CONTRACT_TRANSITION_BLOCK`, nên nếu `EIP1559_TRANSITION_BLOCK > CONTRACT_TRANSITION_BLOCK` thì deploy chắc chắn trước London → **zero gas**. Khoảng block `[CONTRACT_TRANSITION_BLOCK, EIP1559_TRANSITION_BLOCK)` vẫn zero-gas; sau `EIP1559_TRANSITION_BLOCK` mới bắt buộc trả phí.
+>
+>   `2_deploy_contract.js` đọc `eth_blockNumber` và tự chọn `gasPrice=0` hoặc network price.
 
 ### 2.2 `envs/dpos.contract.env` — tham số smart contract
 
@@ -199,7 +228,7 @@ Script `prepare-genesis.sh` chạy `generate-contract-config.js` để sinh cons
 
 - [ ] `NETWORK_ID` đúng định dạng hex (`0x...`)
 - [ ] `PREMINE_ADDRESS` ≠ địa chỉ validator (validator được tự sinh ở Phase A)
-- [ ] `VALIDATOR_BALANCE_WEI` đủ lớn để deploy nhiều contract (khuyến nghị ≥ 10 ETH)
+- [ ] `VALIDATOR_BALANCE_WEI` đủ lớn **nếu bật EIP-1559** (khuyến nghị ≥ 10 ETH); mặc định không EIP-1559 thì deploy zero-gas, balance tối thiểu cũng được
 - [ ] `CONTRACT_TRANSITION_BLOCK` đủ lớn để deploy + patch + restart kịp (khuyến nghị ≥ 50 cho local, ≥ 100 cho production với block time 5s)
 - [ ] `BLOCK_TIME_SECONDS` khớp giữa `dpos.chain.env` và `dpos.contract.env`
 - [ ] Không commit file `.env` thật lên git (đã có trong `.gitignore`)
@@ -367,7 +396,7 @@ Transition verified at block >= <N>
 cat genesis/validator-1.enode
 ```
 
-File enode dùng cho `reserved_peers` khi thêm validator trên server khác. **Chain DPoS ICSC không dùng bootnode.**
+File enode dùng cho `reserved_peers` khi thêm validator trên server khác. **Chain DPoS không dùng bootnode.**
 
 ### 8.2 Bật validator-app (sau verify)
 
@@ -527,7 +556,7 @@ rm -rf data/dpos-blockscout-db data/proxy/docs
 | RPC không phản hồi | Container chưa start / crash | `docker logs dpos-testnet-validator-1` |
 | Deployer lỗi "connection refused" | RPC bind localhost thay vì `all` | Kiểm tra `interface = "all"` trong `validator-1.toml` |
 | Deployer lỗi "Deployer must be validator-1" | Sai keystore hoặc thiếu `VALIDATOR_1_ADDRESS` | Export `VALIDATOR_1_ADDRESS`, kiểm tra mount keystore trong `compose-deploy-contracts.yml` |
-| Deployer out of gas | `VALIDATOR_BALANCE_WEI` quá thấp | Tăng balance trong env, tạo chain mới |
+| Deployer out of gas | `VALIDATOR_BALANCE_WEI` quá thấp **và** `ENABLE_EIP1559=true` | Tăng balance hoặc tắt EIP-1559 (deploy zero-gas) |
 | `restart-validator-1.sh` exit 1 "too late" | Block đã vượt `CONTRACT_TRANSITION_BLOCK` | Tạo chain mới, tăng `CONTRACT_TRANSITION_BLOCK` hoặc giảm `BLOCK_TIME_SECONDS` |
 | `getValidators()` empty sau transition | Spec chưa patch / restart sai thời điểm | Xem lại Phase D, kiểm tra `genesis/spec.json` có `safeContract` |
 | Validator không seal block | Account chưa unlock / sai `engine_signer` | Kiểm tra keystore mount tại `/app/data/keys/${NETWORK_NAME}`, `node.pwd` |
@@ -565,7 +594,7 @@ docker volume ls --filter name=dpos-validator-1
 - [ ] Build và tag đúng version images trên registry nội bộ
 - [ ] `NETWORK_ID` unique, chưa dùng ở chain khác
 - [ ] Backup `genesis/` (keystore validator, `contract-addresses.json`, `spec.json`)
-- [ ] `VALIDATOR_BALANCE_WEI` đủ gas deploy; treasury `PREMINE_ADDRESS` chỉ dùng premine
+- [ ] `VALIDATOR_BALANCE_WEI` đủ gas deploy **nếu bật EIP-1559**; treasury `PREMINE_ADDRESS` chỉ dùng premine
 - [ ] Firewall: chỉ mở 30300 public; RPC qua Traefik + SSL
 - [ ] `CONTRACT_TRANSITION_BLOCK` đủ buffer (≥ 100 với block time 5s)
 - [ ] Phase E verify thành công trước khi công bố RPC

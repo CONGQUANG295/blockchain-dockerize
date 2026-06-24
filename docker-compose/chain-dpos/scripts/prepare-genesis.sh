@@ -7,7 +7,7 @@ source "${ROOT_DIR}/scripts/lib/paths.sh"
 chain_dpos_paths "${ROOT_DIR}"
 chain_dpos_ensure_node_dirs
 
-CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/icsc-dpos-contracts"
+CONTRACTS_DIR="${ROOT_DIR}/../../../blockchain-docker-base/resources/dpos-contracts"
 ENVS_DIR="${ROOT_DIR}/envs"
 
 for f in dpos.chain.env dpos.contract.env; do

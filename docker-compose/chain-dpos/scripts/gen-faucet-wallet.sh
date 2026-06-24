@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPORT="${ROOT_DIR}/genesis/faucet-wallet.export"
 ENV_FILE="${ROOT_DIR}/envs/eth-faucet.env"
-CONTRACTS_DIR="$(cd "${ROOT_DIR}/../../../../blockchain-docker-base/resources/icsc-dpos-contracts" && pwd)"
+CONTRACTS_DIR="$(cd "${ROOT_DIR}/../../../../blockchain-docker-base/resources/dpos-contracts" && pwd)"
 
 set -a
 # shellcheck disable=SC1090
