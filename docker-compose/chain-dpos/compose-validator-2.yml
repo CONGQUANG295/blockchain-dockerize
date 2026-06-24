@@ -1,0 +1,14 @@
+# Validator 2 compose — deferred (v2)
+#
+# Planned services:
+#   - openethereum (validator-2 keystore, reserved_peers = validator-1 enode)
+#   - netstats-api
+#
+# Not wired into bootstrap-chain.sh for v1.
+
+name: dpos-validator-2
+
+# include:
+#   - path:
+#       - ../services/compose-openethereum.yml
+#       - ./overrides/validator-2.override.yml

@@ -1,0 +1,19 @@
+version: '3.8'
+
+name: explorer-v${BLOCKSCOUT_VERSION}
+
+services:
+  db:
+    extends:
+      file: ./services/v${BLOCKSCOUT_VERSION}/docker-compose-db.yml
+      service: db
+    volumes:
+      - ../../data/blockscout-db:/var/lib/postgresql/data/
+  blockscout:
+    extends:
+      file: ./services/v${BLOCKSCOUT_VERSION}/docker-compose-blockscout.yml
+      service: blockscout
+  # nginx:
+  #   extends:
+  #     file: ./services/docker-compose-nginx.yml
+  #     service: nginx

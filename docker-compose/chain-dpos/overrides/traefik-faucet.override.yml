@@ -1,0 +1,14 @@
+services:
+  eth-faucet:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dpos-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-faucet.rule=Host(`${FAUCET_SERVER_NAME}`) || Host(`www.${FAUCET_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-faucet.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-faucet.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-faucet.service=${NETWORK_TYPE:-testnet}-faucet
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-faucet.middlewares=secure-headers@file
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-faucet.loadbalancer.server.port=8080
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-faucet.loadbalancer.passhostheader=true

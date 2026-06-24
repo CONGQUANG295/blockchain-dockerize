@@ -1,0 +1,59 @@
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        sslProxyHeaders:
+          X-Forwarded-Proto: https
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+
+    metrics-deny:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
+    dashboard-auth:
+      basicAuth:
+        users:
+          - "admin:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
+
+    stats-cors:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowOriginList:
+          - "https://${EXPLORER_SERVER_NAME}"
+        accessControlMaxAge: 1728000
+        addVaryHeader: true
+
+    visualize-cors:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowHeaders:
+          - DNT
+          - Keep-Alive
+          - User-Agent
+          - X-Requested-With
+          - If-Modified-Since
+          - Cache-Control
+          - Content-Type
+          - Range
+          - Authorization
+          - x-csrf-token
+        accessControlAllowOriginList:
+          - "https://${EXPLORER_SERVER_NAME}"
+        accessControlMaxAge: 1728000
+        addVaryHeader: true

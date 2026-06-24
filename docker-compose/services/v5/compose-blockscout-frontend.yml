@@ -1,0 +1,12 @@
+services:
+  blockscout-frontend:
+    image: ${BLOCKSCOUT_FRONTEND_IMAGE:-blockscout-frontend:1.29.2}
+    pull_policy: always
+    container_name: blockscout-frontend
+    restart: always
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    expose:
+      - 5004
+    ports:
+      - 5004:5004

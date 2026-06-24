@@ -1,0 +1,16 @@
+# Apply when a `stats` service is added to the stack (Blockscout v5).
+# Reference image/port: http://stats:8050
+services:
+  stats:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-stats.rule=Host(`${STATS_SERVER_NAME}`) || Host(`www.${STATS_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-stats.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-stats.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-stats.service=${NETWORK_TYPE:-mainnet}-stats
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-stats.middlewares=secure-headers@file,stats-cors@file
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-stats.loadbalancer.server.port=8050
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-stats.loadbalancer.passhostheader=true

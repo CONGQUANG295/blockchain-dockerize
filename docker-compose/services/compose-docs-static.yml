@@ -1,0 +1,16 @@
+# Static file server for docs and custom error pages (used behind Traefik).
+services:
+  docs-static:
+    image: nginx:alpine
+    container_name: docs-static
+    restart: unless-stopped
+    volumes:
+      - ../proxy_custom_html:/usr/share/nginx/html/errors:ro
+    expose:
+      - 80
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: poa-proxy

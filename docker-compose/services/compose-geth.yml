@@ -1,0 +1,18 @@
+services:
+  geth:
+    image: ${GETH_IMAGE:-geth:1.13.8}
+    pull_policy: always
+    container_name: geth
+    entrypoint: entrypoints/start-node.sh
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+     - ../../data/data:/app/data
+     - ../../configs/genesis.json:/app/genesis.json
+     - ../../configs/config.toml:/app/config.toml
+    #  - <your custom geth path>:/app/geth
+    expose:
+      - 8545
+    ports:
+      - 30303:30303
+      - 30303:30303/udp

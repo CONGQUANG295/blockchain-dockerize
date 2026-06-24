@@ -1,0 +1,14 @@
+services:
+  openethereum:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dpos-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-rpc.rule=Host(`${RPC_SERVER_NAME}`) || Host(`www.${RPC_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-rpc.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-rpc.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-rpc.service=${NETWORK_TYPE:-testnet}-rpc
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-rpc.middlewares=secure-headers@file,rpc-ratelimit@file
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-rpc.loadbalancer.server.port=8545
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-rpc.loadbalancer.passhostheader=true

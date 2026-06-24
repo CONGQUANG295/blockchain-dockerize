@@ -1,0 +1,39 @@
+name: dpos-dapps-v4
+
+include:
+  - path:
+      - ../services/compose-openethereum.yml
+      - ./overrides/rpc.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+  - path:
+      - ../services/v4/compose-db.yml
+      - ./overrides/v4/db.override.yml
+    env_file:
+      - ./envs/db.env
+  - path:
+      - ../services/v4/compose-blockscout.yml
+      - ./overrides/v4/blockscout.override.yml
+    env_file:
+      - ./envs/db.env
+      - ./envs/blockscout.env
+  - path:
+      - ../services/compose-netstats-dashboard.yml
+      - ./overrides/netstats-dashboard.override.yml
+    env_file:
+      - ./envs/netstats-dashboard.env
+  - path:
+      - ../services/compose-eth-faucet.yml
+      - ./overrides/eth-faucet.override.yml
+  - path:
+      - ../services/compose-docs.yml
+      - ./overrides/docs.override.yml
+  - path:
+      - ../services/compose-nginx.yml
+      - ./overrides/nginx.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/nginx.env
+  - path:
+      - ../services/compose-certbot.yml
+      - ./overrides/certbot.override.yml

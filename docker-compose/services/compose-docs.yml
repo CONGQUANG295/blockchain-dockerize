@@ -1,0 +1,5 @@
+services:
+  docs:
+    image: ${DOCS_IMAGE:-docs-poa:0.0.1}
+    pull_policy: always
+    container_name: docs

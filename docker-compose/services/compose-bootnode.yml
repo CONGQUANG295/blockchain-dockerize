@@ -1,0 +1,15 @@
+services:
+  bootnode:
+    image: ${BOOTNODE_IMAGE:-bootnode:0.0.1}
+    pull_policy: always
+    container_name: bootnode
+    entrypoint: entrypoints/start.sh
+    environment:
+      - BOOTNODE_ENTRY_POINT=:40606
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ../../data/bootnode:/app/data
+    ports:
+      - 40606:40606
+      - 40606:40606/udp

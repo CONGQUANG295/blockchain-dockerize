@@ -1,0 +1,9 @@
+services:
+  visualizer:
+    image: ${BLOCKSCOUT_VISUALIZER_IMAGE:-ghcr.io/blockscout/visualizer:latest}
+    pull_policy: if_not_present
+    platform: linux/amd64
+    restart: always
+    container_name: visualizer
+    expose:
+      - 8050

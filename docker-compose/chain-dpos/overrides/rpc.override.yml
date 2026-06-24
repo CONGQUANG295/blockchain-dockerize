@@ -1,0 +1,11 @@
+services:
+  openethereum:
+    container_name: 'dpos-${NETWORK_TYPE:-testnet}-rpc'
+    env_file:
+      - ../chain-dpos/envs/rpc.env
+    environment:
+      OE_CONFIG_PATH: /app/config/rpc.toml
+    volumes:
+      - ../chain-dpos/genesis/spec.json:/app/genesis/spec.json:ro
+      - ../chain-dpos/config/rpc.toml:/app/config/rpc.toml:ro
+    ports: !override []

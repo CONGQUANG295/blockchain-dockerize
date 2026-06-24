@@ -1,0 +1,11 @@
+services:
+  blockscout:
+    depends_on:
+      - db
+      - geth
+    links:
+      - db:db.host
+      - geth:rpc.host
+    env_file:
+      - ../../chain-poa/envs/db.env
+      - ../../chain-poa/envs/blockscout.env

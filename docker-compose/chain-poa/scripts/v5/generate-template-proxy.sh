@@ -1,0 +1,2 @@
+#!/bin/bash
+docker compose -f compose-dapps-v5.yml run --rm --entrypoint ./docker-entrypoint.d/20-envsubst-on-templates.sh nginx

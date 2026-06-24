@@ -1,0 +1,93 @@
+# Blockscout v5 path-based routing (reference template).
+# Generate runtime config:
+#   ./scripts/traefik/generate-dynamic-config.sh
+#
+# Placeholders: ${BLOCKSCOUT_FRONT_SERVER_NAME}, ${NETWORK_TYPE}
+
+http:
+  routers:
+    ${NETWORK_TYPE}-explorer-v5-metrics:
+      rule: Host(`${BLOCKSCOUT_FRONT_SERVER_NAME}`) && PathPrefix(`/metrics`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - metrics-deny
+      service: unavailable@internal
+      priority: 200
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-explorer-v5-api:
+      rule: >-
+        Host(`${BLOCKSCOUT_FRONT_SERVER_NAME}`) && (
+        PathPrefix(`/_next`) ||
+        PathPrefix(`/node-api`) ||
+        PathPrefix(`/apps`) ||
+        PathPrefix(`/account`) ||
+        PathPrefix(`/accounts`) ||
+        PathPrefix(`/static`) ||
+        PathPrefix(`/auth/profile`) ||
+        PathPrefix(`/auth/unverified-email`) ||
+        PathPrefix(`/txs`) ||
+        PathPrefix(`/tx`) ||
+        PathPrefix(`/blocks`) ||
+        PathPrefix(`/block`) ||
+        PathPrefix(`/login`) ||
+        PathPrefix(`/address`) ||
+        PathPrefix(`/stats`) ||
+        PathPrefix(`/search-results`) ||
+        PathPrefix(`/token`) ||
+        PathPrefix(`/tokens`) ||
+        PathPrefix(`/visualize`) ||
+        PathPrefix(`/api-docs`) ||
+        PathPrefix(`/csv-export`) ||
+        PathPrefix(`/verified-contracts`) ||
+        PathPrefix(`/graphiql`) ||
+        PathPrefix(`/withdrawals`) ||
+        PathPrefix(`/favicon`) ||
+        PathPrefix(`/assets`) ||
+        Path(`/`)
+        )
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-explorer-v5-back
+      priority: 100
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-explorer-v5-css-js:
+      rule: Host(`${BLOCKSCOUT_FRONT_SERVER_NAME}`) && (PathPrefix(`/css`) || PathPrefix(`/js`))
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-explorer-v5-front
+      priority: 90
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-explorer-v5-front:
+      rule: Host(`${BLOCKSCOUT_FRONT_SERVER_NAME}`)
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-explorer-v5-front
+      priority: 1
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    ${NETWORK_TYPE}-explorer-v5-back:
+      loadBalancer:
+        servers:
+          - url: http://blockscout:4000
+        passHostHeader: true
+
+    ${NETWORK_TYPE}-explorer-v5-front:
+      loadBalancer:
+        servers:
+          - url: http://blockscout-frontend:5004
+        passHostHeader: true

@@ -1,0 +1,27 @@
+services:
+  openethereum:
+    image: ${OPENETHEREUM_IMAGE:-openethereum:0.0.1}
+    pull_policy: always
+    container_name: openethereum
+    entrypoint: entrypoints/dpos/start-validator.sh
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - openethereum_keystore:/app/data/keys
+      - openethereum_configs:/app/config
+      - openethereum_chainspec:/app/genesis
+      - openethereum_db:/app/data
+      - openethereum_logs:/app/logs
+    expose:
+      - 8545
+    ports:
+      - 8545:8545
+      - 30300:30300
+      - 30300:30300/udp
+
+volumes:
+  openethereum_keystore:
+  openethereum_configs:
+  openethereum_chainspec:
+  openethereum_db:
+  openethereum_logs:

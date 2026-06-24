@@ -1,0 +1,9 @@
+services:
+  frontend:
+    image: ${BLOCKSCOUT_FRONTEND_IMAGE:-blockscout-frontend:2.8.1}
+    pull_policy: always
+    platform: linux/amd64
+    restart: always
+    container_name: blockscout-frontend
+    expose:
+      - 3000

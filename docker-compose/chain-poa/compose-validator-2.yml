@@ -1,0 +1,10 @@
+name: 'poa-validator-2'
+
+include:
+  - path:
+      - ../services/compose-geth.yml
+      - ../services/compose-netstats-api.yml
+      - ./overrides/validator-2.override.yml
+    env_file:
+      - ./envs/poa.env
+      - ./envs/netstats-dashboard.env

@@ -1,0 +1,16 @@
+name: 'poa-validator-1'
+
+include:
+  - path:
+    - ../services/compose-bootnode.yml
+    - ./overrides/bootnode.override.yml
+    env_file:
+      - ./envs/poa.env
+
+  - path:
+      - ../services/compose-geth.yml
+      - ../services/compose-netstats-api.yml
+      - ./overrides/validator-1.override.yml
+    env_file:
+      - ./envs/poa.env
+      - ./envs/netstats-dashboard.env

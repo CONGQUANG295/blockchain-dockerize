@@ -1,0 +1,105 @@
+name: dpos-dapps-traefik-v11
+
+# DPoS dapps + Blockscout v11 (backend 11.2.1 + frontend 2.8.1 + stats + visualizer)
+# Usage:
+#   ./scripts/render-envs.sh envs/deploy.env --with-traefik
+#   ./scripts/prepare-rpc-node.sh
+#   ./scripts/prepare-envs-dapps.sh
+#   docker compose -f compose-dapps-traefik-v11.yml --profile faucet up -d
+
+include:
+  - path:
+      - ../services/compose-openethereum-rpc.yml
+      - ./overrides/rpc.override.yml
+      - ./overrides/traefik-rpc.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/images.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/v11/compose-db.yml
+      - ./overrides/v11/db.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/db.env
+
+  - path:
+      - ../services/v11/compose-redis.yml
+      - ./overrides/v11/networks.override.yml
+
+  - path:
+      - ../services/v11/compose-blockscout-backend.yml
+      - ./overrides/v11/blockscout-backend.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+
+  - path:
+      - ../services/v11/compose-blockscout-frontend.yml
+      - ./overrides/v11/blockscout-frontend.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+
+  - path:
+      - ../services/v11/compose-stats.yml
+      - ./overrides/v11/blockscout-stats.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+      - ./envs/blockscout-stats.env
+
+  - path:
+      - ../services/v11/compose-visualizer.yml
+      - ./overrides/v11/blockscout-visualizer.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+
+  - path:
+      - ../services/compose-netstats-dashboard.yml
+      - ./overrides/netstats-dashboard.override.yml
+      - ./overrides/traefik-netstats.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+      - ./envs/netstats-dashboard.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-eth-faucet.yml
+      - ./overrides/eth-faucet.override.yml
+      - ./overrides/traefik-faucet.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/images.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-docs-static.yml
+      - ./overrides/traefik-docs.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-traefik.yml
+      - ./overrides/traefik.override.yml
+      - ./overrides/v11/networks.override.yml
+    env_file:
+      - ./envs/traefik.env
+
+services:
+  eth-faucet:
+    profiles:
+      - faucet
+  db:
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+  stats-db:
+    depends_on:
+      stats-db-init:
+        condition: service_completed_successfully

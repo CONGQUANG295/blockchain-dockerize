@@ -1,0 +1,12 @@
+services:
+  eth-faucet:
+    image: ${ETH_FAUCET_IMAGE:-eth-faucet:0.0.1}
+    pull_policy: always
+    container_name: eth-faucet
+    entrypoint: ./eth-faucet
+    env_file:
+      - ../envs/eth-faucet.env
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    expose:
+      - 8080

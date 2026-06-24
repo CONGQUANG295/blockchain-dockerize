@@ -1,0 +1,12 @@
+# Blockscout v5 uses file-provider routing (see traefik/dynamic/blockscout-v5.yml.template).
+# Run ./scripts/traefik/generate-dynamic-config.sh after editing traefik.env.
+services:
+  blockscout:
+    networks:
+      - proxy
+
+  blockscout-frontend:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=false

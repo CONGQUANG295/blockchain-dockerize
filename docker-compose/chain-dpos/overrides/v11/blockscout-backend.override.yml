@@ -1,0 +1,15 @@
+services:
+  backend:
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-db:
+        condition: service_started
+      openethereum:
+        condition: service_started
+    links:
+      - db:database
+      - openethereum:rpc.host
+    env_file:
+      - ../../chain-dpos/envs/blockscout-backend.env
+      - ../../chain-dpos/envs/db.env

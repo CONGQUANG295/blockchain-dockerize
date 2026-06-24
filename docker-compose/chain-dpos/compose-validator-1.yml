@@ -1,0 +1,34 @@
+name: dpos-validator-1
+
+include:
+  - path:
+      - ../services/compose-openethereum.yml
+      - ../services/compose-netstats-api.yml
+      - ./overrides/validator-1.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/images.env
+      - ./envs/netstats-dashboard.env
+      - ./envs/netstats-api.env
+
+services:
+  validator-app:
+    profiles: ["consensus"]
+    image: ${VALIDATOR_APP_IMAGE:-validator-app:0.0.1}
+    pull_policy: always
+    container_name: dpos-validator-app-1
+    depends_on:
+      - openethereum
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/validator-app.env
+    environment:
+      RPC: http://openethereum:8545
+      NETWORK_NAME: ${NETWORK_NAME}
+      CONSENSUS_ADDRESS: ${CONSENSUS_PROXY:-}
+      BLOCK_REWARD_ADDRESS: ${BLOCK_REWARD_PROXY:-}
+      LOG_LEVEL: info
+      MIN_GAS_PRICE: "10000000000"
+    volumes:
+      - ./genesis/validator-1/keystore:/app/config/keys/${NETWORK_NAME}:ro
+      - ./genesis/validator-1/node.pwd:/app/config/pass.pwd:ro

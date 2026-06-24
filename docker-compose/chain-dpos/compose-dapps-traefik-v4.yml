@@ -1,0 +1,59 @@
+name: dpos-dapps-traefik-v4
+
+# DPoS dapps stack with Traefik (replaces nginx + certbot).
+# Usage:
+#   cd docker-compose/chain-dpos
+#   ./scripts/prepare-envs-dapps.sh
+#   ./scripts/traefik/prepare-envs-traefik.sh
+#   docker compose -f compose-dapps-traefik-v4.yml up -d
+
+include:
+  - path:
+      - ../services/compose-openethereum.yml
+      - ./overrides/rpc.override.yml
+      - ./overrides/traefik-rpc.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/v4/compose-db.yml
+      - ./overrides/v4/db.override.yml
+    env_file:
+      - ./envs/db.env
+
+  - path:
+      - ../services/v4/compose-blockscout.yml
+      - ./overrides/v4/blockscout.override.yml
+      - ./overrides/traefik-blockscout-v4.override.yml
+    env_file:
+      - ./envs/db.env
+      - ./envs/blockscout.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-netstats-dashboard.yml
+      - ./overrides/netstats-dashboard.override.yml
+      - ./overrides/traefik-netstats.override.yml
+    env_file:
+      - ./envs/netstats-dashboard.env
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-eth-faucet.yml
+      - ./overrides/eth-faucet.override.yml
+      - ./overrides/traefik-faucet.override.yml
+    env_file:
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-docs-static.yml
+      - ./overrides/traefik-docs.override.yml
+    env_file:
+      - ./envs/traefik.env
+
+  - path:
+      - ../services/compose-traefik.yml
+      - ./overrides/traefik.override.yml
+    env_file:
+      - ./envs/traefik.env

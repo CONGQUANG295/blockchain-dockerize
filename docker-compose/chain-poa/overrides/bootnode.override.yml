@@ -1,0 +1,5 @@
+services:
+  bootnode:
+    container_name: 'poa-${NETWORK_TYPE:-mainnet}-bootnode'
+    volumes:
+      - ../../data/${NETWORK_TYPE:-mainnet}/bootnode:/app/data

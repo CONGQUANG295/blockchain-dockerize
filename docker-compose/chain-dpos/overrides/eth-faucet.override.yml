@@ -1,0 +1,7 @@
+services:
+  eth-faucet:
+    container_name: 'dpos-eth-faucet'
+    env_file:
+      - ../chain-dpos/envs/eth-faucet.env
+    links:
+      - openethereum:rpc.host

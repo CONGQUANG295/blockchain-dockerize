@@ -1,0 +1,7 @@
+services:
+  geth:
+    container_name: 'poa-${NETWORK_TYPE:-mainnet}-rpc'
+    volumes:
+      - ../../data/${NETWORK_TYPE:-mainnet}/rpc:/app/data
+      - ../../configs/genesis.json:/app/genesis.json
+      - ../../configs/config.toml:/app/config.toml

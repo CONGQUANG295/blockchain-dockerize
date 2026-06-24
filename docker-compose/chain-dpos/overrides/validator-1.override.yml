@@ -1,0 +1,22 @@
+services:
+  openethereum:
+    container_name: 'dpos-${NETWORK_TYPE:-testnet}-validator-1'
+    env_file:
+      - ../chain-dpos/envs/openethereum.env
+      - ../chain-dpos/envs/validator-1.env
+    volumes:
+      - ../chain-dpos/genesis/spec.json:/app/genesis/spec.json:ro
+      - ../chain-dpos/genesis/validator-1/keystore:/app/data/keys/${NETWORK_NAME}
+      - ../chain-dpos/genesis/validator-1/node.pwd:/app/genesis/validator-1/node.pwd:ro
+      - ../chain-dpos/config/validator-1.toml:/app/config/validator-1.toml:ro
+  netstats-api:
+    container_name: 'dpos-${NETWORK_TYPE:-testnet}-netstats-api-1'
+    links:
+      - openethereum:rpc.host
+    depends_on:
+      - openethereum
+    env_file:
+      - ../chain-dpos/envs/netstats-dashboard.env
+      - ../chain-dpos/envs/netstats-api.env
+    environment:
+      - INSTANCE_NAME=Validator 1

@@ -1,0 +1,81 @@
+# Shared Traefik middlewares (reference).
+# Edit dashboard-auth users before exposing the dashboard publicly.
+
+http:
+  middlewares:
+    # Forward headers for apps behind HTTPS termination.
+    secure-headers:
+      headers:
+        sslProxyHeaders:
+          X-Forwarded-Proto: https
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+
+    # Rate limit for public JSON-RPC endpoints.
+    rpc-ratelimit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+
+    # Optional: restrict RPC to known IP ranges (uncomment and edit).
+    # rpc-ipwhitelist:
+    #   ipAllowList:
+    #     sourceRange:
+    #       - "10.0.0.0/8"
+    #       - "192.168.0.0/16"
+
+    # Block /metrics from public access (returns 403).
+    metrics-deny:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"
+
+    # Dashboard basic auth — replace with: htpasswd -nb admin yourpassword
+    dashboard-auth:
+      basicAuth:
+        users:
+          - "admin:$$apr1$$H6uskkkW$$IgXLP6ewTrSuBkTrqE8wj/"
+
+    # CORS for Blockscout stats service (v5).
+    stats-cors:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowOriginList:
+          - "https://explorer.example.com"
+        accessControlMaxAge: 1728000
+        addVaryHeader: true
+
+    # CORS for Blockscout visualizer (v5).
+    visualize-cors:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowHeaders:
+          - DNT
+          - Keep-Alive
+          - User-Agent
+          - X-Requested-With
+          - If-Modified-Since
+          - Cache-Control
+          - Content-Type
+          - Range
+          - Authorization
+          - x-csrf-token
+        accessControlAllowOriginList:
+          - "https://explorer.example.com"
+        accessControlMaxAge: 1728000
+        addVaryHeader: true

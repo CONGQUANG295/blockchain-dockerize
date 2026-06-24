@@ -1,0 +1,96 @@
+# Traefik routing for Blockscout 11.x (backend 11.2.1 + frontend 2.8.1).
+# Mirrors proxy/explorer.conf.template and proxy/microservices.conf.template.
+#
+# Generate:
+#   ./scripts/generate-traefik-dynamic.sh
+#
+# Placeholders: ${EXPLORER_SERVER_NAME}, ${STATS_SERVER_NAME}, ${VISUALIZE_SERVER_NAME}, ${NETWORK_TYPE}
+
+http:
+  routers:
+    ${NETWORK_TYPE}-explorer-metrics:
+      rule: Host(`${EXPLORER_SERVER_NAME}`) && PathPrefix(`/metrics`)
+      entryPoints:
+        - websecure
+      middlewares:
+        - metrics-deny
+      service: unavailable@internal
+      priority: 200
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-explorer-api:
+      rule: >-
+        Host(`${EXPLORER_SERVER_NAME}`) && (
+        (PathPrefix(`/api`) && !PathPrefix(`/api-docs`)) ||
+        PathPrefix(`/socket`) ||
+        PathPrefix(`/sitemap.xml`) ||
+        PathPrefix(`/auth/auth0`) ||
+        PathPrefix(`/auth/logout`)
+        )
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-explorer-backend
+      priority: 100
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-explorer-front:
+      rule: Host(`${EXPLORER_SERVER_NAME}`)
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-explorer-frontend
+      priority: 1
+      middlewares:
+        - secure-headers
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-stats:
+      rule: Host(`${STATS_SERVER_NAME}`)
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-stats
+      middlewares:
+        - secure-headers
+        - stats-cors
+      tls:
+        certResolver: letsencrypt
+
+    ${NETWORK_TYPE}-visualizer:
+      rule: Host(`${VISUALIZE_SERVER_NAME}`)
+      entryPoints:
+        - websecure
+      service: ${NETWORK_TYPE}-visualizer
+      middlewares:
+        - secure-headers
+        - visualize-cors
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    ${NETWORK_TYPE}-explorer-backend:
+      loadBalancer:
+        servers:
+          - url: http://backend:4000
+        passHostHeader: true
+
+    ${NETWORK_TYPE}-explorer-frontend:
+      loadBalancer:
+        servers:
+          - url: http://frontend:3000
+        passHostHeader: true
+
+    ${NETWORK_TYPE}-stats:
+      loadBalancer:
+        servers:
+          - url: http://stats:8050
+        passHostHeader: true
+
+    ${NETWORK_TYPE}-visualizer:
+      loadBalancer:
+        servers:
+          - url: http://visualizer:8050
+        passHostHeader: true

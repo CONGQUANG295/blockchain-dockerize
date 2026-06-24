@@ -1,0 +1,25 @@
+networks:
+  proxy:
+    name: dpos-proxy
+
+services:
+  traefik:
+    env_file:
+      - ../chain-dpos/envs/traefik.env
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - ../../data/traefik/letsencrypt:/letsencrypt
+      - ../chain-dpos/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../chain-dpos/traefik/dynamic:/etc/traefik/dynamic:ro
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dpos-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-dashboard.rule=Host(`${TRAEFIK_DASHBOARD_HOST}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-dashboard.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-dashboard.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-dashboard.service=api@internal
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-dashboard.middlewares=dashboard-auth@file

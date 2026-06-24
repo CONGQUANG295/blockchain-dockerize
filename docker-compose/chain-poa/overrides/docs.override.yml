@@ -1,0 +1,8 @@
+services:
+  docs:
+    container_name: 'poa-docs'
+    env_file:
+      - ../chain-poa/envs/docs.env
+    volumes:
+      - ../../data/docs:/app/docs-develop
+      - ../../data/proxy/docs:/app/docs-release

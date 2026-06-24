@@ -1,0 +1,14 @@
+services:
+  blockscout:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dpos-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-explorer.rule=Host(`${BLOCKSCOUT_BACK_SERVER_NAME}`) || Host(`www.${BLOCKSCOUT_BACK_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-explorer.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-explorer.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-explorer.service=${NETWORK_TYPE:-testnet}-explorer
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-explorer.middlewares=secure-headers@file
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-explorer.loadbalancer.server.port=4000
+      - traefik.http.services.${NETWORK_TYPE:-testnet}-explorer.loadbalancer.passhostheader=true

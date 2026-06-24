@@ -1,0 +1,60 @@
+networks:
+  dapps:
+    name: dpos-dapps-v11
+  proxy:
+    name: dpos-proxy
+
+services:
+  openethereum:
+    networks:
+      - dapps
+      - proxy
+  db-init:
+    networks:
+      - dapps
+  db:
+    networks:
+      - dapps
+      - proxy
+  redis-db:
+    networks:
+      - dapps
+      - proxy
+  backend:
+    networks:
+      - dapps
+      - proxy
+  frontend:
+    networks:
+      - dapps
+      - proxy
+  stats-db-init:
+    networks:
+      - dapps
+  stats-db:
+    networks:
+      - dapps
+      - proxy
+  stats:
+    networks:
+      - dapps
+      - proxy
+  visualizer:
+    networks:
+      - dapps
+      - proxy
+  netstats-dashboard:
+    networks:
+      - dapps
+      - proxy
+  eth-faucet:
+    networks:
+      - dapps
+      - proxy
+  docs-static:
+    networks:
+      - dapps
+      - proxy
+  traefik:
+    networks:
+      - proxy

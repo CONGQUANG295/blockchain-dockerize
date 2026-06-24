@@ -1,0 +1,6 @@
+services:
+  netstats-dashboard:
+    env_file:
+      - ../chain-poa/envs/netstats-dashboard.env
+    ports: !override
+      - ${PORT}:${PORT}

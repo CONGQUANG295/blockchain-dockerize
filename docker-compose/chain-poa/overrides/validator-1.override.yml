@@ -1,0 +1,23 @@
+services:
+  geth:
+    container_name: 'poa-${NETWORK_TYPE:-mainnet}-validator-1'
+    depends_on:
+      - bootnode
+    entrypoint: entrypoints/start-validator.sh
+    env_file:
+      - ../chain-poa/envs/validator-1.env
+    volumes:
+      - ../../data/${NETWORK_TYPE:-mainnet}/validator-1:/app/data
+      - ../../configs/genesis.json:/app/genesis.json
+      - ../../configs/config.toml:/app/config.toml
+  netstats-api:
+    container_name: 'poa-${NETWORK_TYPE:-mainnet}-netstats-api-1'
+    links:
+      - geth:rpc.host
+    depends_on:
+      - geth
+    env_file:
+      - ../chain-poa/envs/netstats-dashboard.env
+      - ../chain-poa/envs/netstats-api.env
+    environment:
+      - INSTANCE_NAME=Validator 1

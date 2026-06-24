@@ -1,0 +1,25 @@
+[parity]
+chain = "/app/genesis/spec.json"
+base_path = "/app/data"
+
+[network]
+port = 30301
+reserved_peers = ["__VALIDATOR_1_ENODE__"]
+
+[rpc]
+cors = ["all"]
+hosts = ["all"]
+interface = "all"
+port = 8545
+apis = ["eth", "net", "parity", "web3", "trace"]
+
+[websockets]
+disable = false
+interface = "all"
+port = 8546
+apis = ["eth", "net", "web3"]
+
+[footprint]
+tracing = "on"
+pruning = "archive"
+fat_db = "on"

@@ -1,0 +1,14 @@
+services:
+  geth:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-rpc.rule=Host(`${RPC_SERVER_NAME}`) || Host(`www.${RPC_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-rpc.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-rpc.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-rpc.service=${NETWORK_TYPE:-mainnet}-rpc
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-rpc.middlewares=secure-headers@file,rpc-ratelimit@file
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-rpc.loadbalancer.server.port=8545
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-rpc.loadbalancer.passhostheader=true

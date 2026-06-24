@@ -1,0 +1,17 @@
+services:
+  stats-db-init:
+    volumes:
+      - ../../../data/dpos-stats-db:/var/lib/postgresql/data
+  stats-db:
+    environment:
+      POSTGRES_PASSWORD: ${STATS_DB_PASSWORD:-changeme}
+    volumes:
+      - ../../../data/dpos-stats-db:/var/lib/postgresql/data
+  stats:
+    depends_on:
+      stats-db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    env_file:
+      - ../../chain-dpos/envs/blockscout-stats.env

@@ -1,0 +1,15 @@
+services:
+  netstats-dashboard:
+    ports: !override []
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-status.rule=Host(`${STATUS_SERVER_NAME}`) || Host(`www.${STATUS_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-status.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-status.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-status.service=${NETWORK_TYPE:-mainnet}-status
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-status.middlewares=secure-headers@file
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-status.loadbalancer.server.port=${PORT:-3006}
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-status.loadbalancer.passhostheader=true

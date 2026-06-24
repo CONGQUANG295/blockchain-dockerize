@@ -1,0 +1,10 @@
+{
+  "files.associations": {
+    "compose-*.yml": "dockercompose",
+    "compose-*.yaml": "dockercompose",
+    "*.override.yml": "dockercompose",
+    "*.override.yaml": "dockercompose",
+    "*.conf.template": "properties",
+    "*.conf.template.example": "properties"
+  }
+}

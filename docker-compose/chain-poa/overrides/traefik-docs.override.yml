@@ -1,0 +1,14 @@
+services:
+  docs-static:
+    volumes:
+      - ../../data/proxy/docs:/usr/share/nginx/html:ro
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-docs.rule=Host(`${DOCS_SERVER_NAME}`) || Host(`www.${DOCS_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-docs.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-docs.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-docs.service=${NETWORK_TYPE:-mainnet}-docs
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-docs.middlewares=secure-headers@file
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-docs.loadbalancer.server.port=80
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-docs.loadbalancer.passhostheader=true

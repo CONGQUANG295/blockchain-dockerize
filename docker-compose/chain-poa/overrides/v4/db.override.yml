@@ -1,0 +1,4 @@
+services:
+  db:
+    volumes:
+      - ../../../data/blockscout-db:/var/lib/postgresql/data/

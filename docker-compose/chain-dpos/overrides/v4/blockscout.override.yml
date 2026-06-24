@@ -1,0 +1,11 @@
+services:
+  blockscout:
+    depends_on:
+      - db
+      - openethereum
+    links:
+      - db:db.host
+      - openethereum:rpc.host
+    env_file:
+      - ../../chain-dpos/envs/db.env
+      - ../../chain-dpos/envs/blockscout.env

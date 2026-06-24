@@ -1,0 +1,29 @@
+name: dpos-deploy-contracts
+
+services:
+  deployer:
+    image: ${DPOS_DEPLOYER_IMAGE:-dpos-deployer:0.0.1}
+    pull_policy: always
+    container_name: dpos-deployer
+    env_file:
+      - ./envs/images.env
+      - ./envs/dpos.chain.env
+    environment:
+      DPOS_RPC_URL: http://openethereum:8545
+      INITIAL_VALIDATOR_ADDRESS: ${VALIDATOR_1_ADDRESS}
+      INITIAL_SUPPLY_GWEI: ${INITIAL_SUPPLY_GWEI}
+      CONTRACT_ADDRESSES_OUT: /genesis/contract-addresses.json
+      VALIDATOR_KEYSTORE_DIR: /validator/keystore
+      VALIDATOR_PASSWORD_FILE: /validator/node.pwd
+    volumes:
+      - ./genesis:/genesis
+      - ./genesis/validator-1/keystore:/validator/keystore:ro
+      - ./genesis/validator-1/node.pwd:/validator/node.pwd:ro
+    command: scripts/2_deploy_contract.js --network dpos_local
+    networks:
+      - validator
+
+networks:
+  validator:
+    external: true
+    name: ${COMPOSE_PROJECT_NAME:-dpos-validator-1}_default

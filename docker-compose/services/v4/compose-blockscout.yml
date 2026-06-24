@@ -1,0 +1,13 @@
+services:
+  blockscout:
+    image: ${BLOCKSCOUT_BASE_IMAGE:-blockscout-base:4.1.8}
+    pull_policy: always
+    restart: always
+    container_name: 'blockscout'
+    command: bash -c "mix phx.server"
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    env_file:
+      -  ../../envs/v4/common-blockscout.env
+    ports:
+      - 4000:4000

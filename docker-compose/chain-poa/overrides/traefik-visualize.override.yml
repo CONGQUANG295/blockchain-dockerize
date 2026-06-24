@@ -1,0 +1,16 @@
+# Apply when a `visualize` service is added to the stack (Blockscout v5).
+# Reference image/port: http://visualize:9050
+services:
+  visualize:
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-visualize.rule=Host(`${VISUALIZE_SERVER_NAME}`) || Host(`www.${VISUALIZE_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-visualize.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-visualize.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-visualize.service=${NETWORK_TYPE:-mainnet}-visualize
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-visualize.middlewares=secure-headers@file,visualize-cors@file
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-visualize.loadbalancer.server.port=9050
+      - traefik.http.services.${NETWORK_TYPE:-mainnet}-visualize.loadbalancer.passhostheader=true

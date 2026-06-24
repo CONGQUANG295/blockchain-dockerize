@@ -1,0 +1,30 @@
+[parity]
+chain = "/app/genesis/spec.json"
+base_path = "/app/data"
+
+[network]
+port = 30300
+
+[rpc]
+cors = ["all"]
+hosts = ["all"]
+interface = "all"
+port = 8545
+apis = ["eth", "net", "parity", "web3", "personal"]
+
+[websockets]
+disable = true
+
+[footprint]
+tracing = "on"
+pruning = "archive"
+fat_db = "on"
+
+[account]
+unlock = ["__VALIDATOR_ADDRESS__"]
+password = ["/app/genesis/validator-1/node.pwd"]
+
+[mining]
+force_sealing = true
+engine_signer = "__VALIDATOR_ADDRESS__"
+reseal_on_txs = "none"

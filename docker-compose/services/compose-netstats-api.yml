@@ -1,0 +1,10 @@
+services:
+  netstats-api:
+    image: ${NETSTATS_API_IMAGE:-netstats-api:0.0.1}
+    pull_policy: always
+    container_name: netstats-api
+    entrypoint: entrypoints/start.sh
+    env_file:
+      - ../envs/netstats-api.env
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

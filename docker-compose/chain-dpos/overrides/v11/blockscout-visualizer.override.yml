@@ -1,0 +1,6 @@
+services:
+  visualizer:
+    depends_on:
+      - backend
+    env_file:
+      - ../../chain-dpos/envs/blockscout-visualizer.env

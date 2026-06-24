@@ -1,0 +1,22 @@
+services:
+  traefik:
+    env_file:
+      - ../chain-poa/envs/traefik.env
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+    volumes:
+      - ../../data/traefik/letsencrypt:/letsencrypt
+      - ../chain-poa/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../chain-poa/traefik/dynamic:/etc/traefik/dynamic:ro
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=poa-proxy
+      # Dashboard (optional — set TRAEFIK_DASHBOARD_ENABLED=true in traefik.env)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-dashboard.rule=Host(`${TRAEFIK_DASHBOARD_HOST}`)
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-dashboard.entrypoints=websecure
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-dashboard.tls.certresolver=letsencrypt
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-dashboard.service=api@internal
+      - traefik.http.routers.${NETWORK_TYPE:-mainnet}-dashboard.middlewares=dashboard-auth@file

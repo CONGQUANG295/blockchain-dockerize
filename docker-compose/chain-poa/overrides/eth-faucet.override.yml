@@ -1,0 +1,8 @@
+services:
+  eth-faucet:
+    container_name: 'poa-eth-faucet'
+    env_file:
+      - ../chain-poa/envs/eth-faucet.env
+    links:
+      - geth:rpc.host
+    

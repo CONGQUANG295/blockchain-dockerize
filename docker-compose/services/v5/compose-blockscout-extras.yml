@@ -1,0 +1,19 @@
+# Blockscout v5 optional services (reference stubs — replace images when available).
+services:
+  stats:
+    image: ghcr.io/blockscout/stats:latest
+    container_name: blockscout-stats
+    restart: unless-stopped
+    expose:
+      - 8050
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  visualize:
+    image: ghcr.io/blockscout/visualizer:latest
+    container_name: blockscout-visualizer
+    restart: unless-stopped
+    expose:
+      - 9050
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

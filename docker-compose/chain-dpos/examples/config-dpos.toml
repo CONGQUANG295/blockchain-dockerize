@@ -1,0 +1,28 @@
+[parity]
+chain = "./spec/spec.json"
+base_path = "./nodes/validator1/"
+
+[network]
+port = 30300
+
+[rpc]
+cors = ["all"]
+hosts = ["all"]
+port = 8545
+
+[websockets]
+disable = true
+
+[footprint]
+tracing = "on"
+pruning = "archive"
+fat_db = "on"
+
+[account]
+unlock = ["0xa353775a00f633ec41dab0e42bfb3b77a2894906"]
+password = ["./nodes/validator1/node.pwd"]
+
+[mining]
+force_sealing = true
+engine_signer = "0xa353775a00f633ec41dab0e42bfb3b77a2894906"
+reseal_on_txs = "none"

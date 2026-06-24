@@ -1,0 +1,12 @@
+services:
+  netstats-dashboard:
+    image: ${NETSTATS_DASHBOARD_IMAGE:-netstats-dashboard:0.0.1}
+    pull_policy: always
+    container_name: netstats-dashboard
+    entrypoint: entrypoints/start.sh
+    env_file:
+      - ../envs/netstats-dashboard.env
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - 3006:3006

@@ -1,0 +1,25 @@
+/docker-compose/services/bootnode-data
+/docker-compose/services/blockscout-db-data
+/docker-compose/services/redis-data
+/docker-compose/tmp
+/docker-compose/logs
+/docker-compose/**/*.override.yml
+/docker-compose/**/*.prod.yml
+/docker-compose/**/*.override.yaml
+/docker-compose/**/*.prod.yaml
+!/docker-compose/**/overrides/*
+!/docker-compose/**/overrides/**/*
+/docker-compose/**/proxy/*.template
+/docker-compose/**/proxy/*.ssl-template
+/docker-compose/**/proxy/*.stream-template
+/docker-compose/**/proxy/**/*.template
+/docker-compose/**/proxy/**/*.ssl-template
+/docker-compose/**/proxy/**/*.stream-template
+/data
+/configs
+/docker-compose/chain-poa/traefik/dynamic/blockscout-v5.yml
+.env
+*.env
+# /tests/**/data/**/*
+# !tests/**/data/**/bootnode
+# # !tests/**/data/**/keystore

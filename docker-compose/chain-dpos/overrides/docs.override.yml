@@ -1,0 +1,8 @@
+services:
+  docs:
+    container_name: 'dpos-docs'
+    env_file:
+      - ../chain-dpos/envs/docs.env
+    volumes:
+      - ../../data/docs:/app/docs-develop
+      - ../../data/proxy/docs:/app/docs-release
