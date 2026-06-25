@@ -69,12 +69,21 @@ source envs/validator-app.env
 set +a
 
 echo "=== Pull + start validator-1 + validator-app ==="
-docker compose -f compose-validator-1.yml --profile consensus pull
-docker compose -f compose-validator-1.yml --profile consensus up -d
+# shellcheck source=lib/compose.sh
+source "${ROOT_DIR}/scripts/lib/compose.sh"
+chain_dpos_compose "${ROOT_DIR}" -f compose-validator-1.yml --profile consensus pull
+chain_dpos_compose "${ROOT_DIR}" -f compose-validator-1.yml --profile consensus up -d
 
 if [ "${SKIP_HEALTH}" = false ]; then
   remote_wait_for_rpc
-  echo "Validator deploy complete. Enode: $(cat genesis/validator-1.enode 2>/dev/null || echo 'run get_enode.sh')"
+  if [ "${OPEN_P2P_PORT:-}" = "1" ] || [ "${OPEN_P2P_PORT:-}" = "true" ]; then
+    echo "=== Open P2P firewall ==="
+    sudo OPEN_P2P_PORT=1 P2P_PORT="${P2P_PORT:-30300}" ./scripts/remote/open-p2p-port.sh
+  fi
+  echo "=== Export peer bundle (spec + enode + reserved-peers) ==="
+  ./scripts/export-peer-config.sh
+  echo "Validator deploy complete."
+  echo "  reserved-peers: $(cat genesis/reserved-peers.txt 2>/dev/null | head -1 || echo 'run export-peer-config.sh')"
 else
   echo "Validator stack started (--skip-health)."
 fi

@@ -39,8 +39,8 @@ remote_require_deploy_env "${ROOT_DIR}"
 remote_require_cmd curl
 remote_require_cmd jq
 
-if [ ! -f genesis/validator-1.enode ]; then
-  echo "Missing genesis/validator-1.enode — run deploy-validator.sh first (bootstrap exports enode)." >&2
+if [ ! -f genesis/reserved-peers.txt ] && [ ! -f genesis/validator-1.enode ]; then
+  echo "Missing peer bundle (genesis/reserved-peers.txt) — run deploy-validator.sh or export-peer-config.sh first." >&2
   exit 1
 fi
 

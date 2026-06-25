@@ -1,14 +1,12 @@
-# Validator 2 compose — deferred (v2)
+# Additional validator compose — deferred (v2)
 #
-# Planned services:
-#   - openethereum (validator-2 keystore, reserved_peers = validator-1 enode)
-#   - netstats-api
-#
-# Not wired into bootstrap-chain.sh for v1.
+# Non-seed validators use genesis/reserved-peers.txt (from export-peer-config on seed host).
+# Prepare locally: make prepare-new-validator-local SEED_SERVER=... [NODE_ID=validator-N]
+# Filename / service name should match NODE_ID (e.g. compose-validator-3.yml).
 
-name: dpos-validator-2
+name: dpos-new-validator
 
 # include:
 #   - path:
 #       - ../services/compose-openethereum.yml
-#       - ./overrides/validator-2.override.yml
+#       - ./overrides/<NODE_ID>.override.yml

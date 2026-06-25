@@ -36,8 +36,10 @@ if [ "${DAPPS_ONLY}" = false ]; then
   # shellcheck disable=SC1090
   source envs/validator-app.env
   set +a
-  docker compose -f compose-validator-1.yml --profile consensus pull
-  docker compose -f compose-validator-1.yml --profile consensus up -d validator-app
+  # shellcheck source=lib/compose.sh
+  source "${ROOT_DIR}/scripts/lib/compose.sh"
+  chain_dpos_compose "${ROOT_DIR}" -f compose-validator-1.yml --profile consensus pull
+  chain_dpos_compose "${ROOT_DIR}" -f compose-validator-1.yml --profile consensus up -d validator-app
 fi
 
 if [ "${CHAIN_ONLY}" = true ]; then

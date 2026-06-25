@@ -12,14 +12,18 @@ services:
       - ../chain-dpos/nodes/validator-1/keystore:/app/data/keys/${NETWORK_NAME}
       - ../chain-dpos/nodes/validator-1/node.pwd:/app/secrets/node.pwd:ro
       - ../chain-dpos/nodes/validator-1/data:/app/data
+    ports: !override
+      # Host bind localhost only — do not use 0.0.0.0:8545 unless publishing RPC intentionally
+      - "127.0.0.1:8545:8545"
+      - "30300:30300"
+      - "30300:30300/udp"
   netstats-api:
     container_name: 'dpos-${NETWORK_TYPE:-testnet}-netstats-api-1'
-    links:
-      - openethereum:rpc.host
     depends_on:
       - openethereum
     env_file:
       - ../chain-dpos/envs/netstats-dashboard.env
       - ../chain-dpos/envs/netstats-api.env
     environment:
-      - INSTANCE_NAME=Validator 1
+      INSTANCE_NAME: Validator 1
+      RPC_HOST: openethereum

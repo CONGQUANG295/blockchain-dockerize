@@ -2,6 +2,8 @@
 
 Enable GTBS custom staking contracts when deploying a DPoS chain. Standard chains leave `ENABLE_CUSTOM_STAKING=false` (default).
 
+> **Runbook deploy validator-1:** [validator-1-custom-contracts.md](./validator-1-custom-contracts.md) — từ build image → sync server → bootstrap + validator-app + netstats-api.
+
 ## Enable
 
 1. In `envs/deploy.env`:

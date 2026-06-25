@@ -11,7 +11,10 @@ ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 SCRIPTS := $(ROOT)/scripts
 
 SERVER ?=
-REMOTE_DIR ?= /opt/blockchain-dock
+_REMOTE_FROM_DEPLOY_ENV := $(shell \
+	grep -E '^[[:space:]]*REMOTE_DEPLOY_DIR=' '$(ROOT)/envs/deploy.env' 2>/dev/null | \
+	tail -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$$//;s/^"//;s/"$$//;s/^'\''//;s/'\''$$//')
+REMOTE_DIR ?= $(if $(_REMOTE_FROM_DEPLOY_ENV),$(_REMOTE_FROM_DEPLOY_ENV),/opt/blockchain-dock)
 DOCKERHUB_NAMESPACE ?=
 
 WITH_TRAEFIK ?= 0

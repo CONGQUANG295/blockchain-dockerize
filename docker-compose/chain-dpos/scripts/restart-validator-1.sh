@@ -12,7 +12,7 @@ set +a
 
 BLOCK_HEX="$(curl -sf -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-  "${RPC_URL}" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).result))")"
+  "${RPC_URL}" | jq -r '.result')"
 BLOCK_DEC=$((16#${BLOCK_HEX#0x}))
 TRANSITION="${CONTRACT_TRANSITION_BLOCK}"
 

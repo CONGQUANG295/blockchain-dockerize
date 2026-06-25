@@ -6,7 +6,6 @@ base_path = "/app/data"
 port = 30300
 
 [rpc]
-cors = ["all"]
 hosts = ["all"]
 interface = "all"
 port = 8545

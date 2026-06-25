@@ -17,16 +17,14 @@ services:
     image: ${VALIDATOR_APP_IMAGE:-validator-app:0.0.1}
     pull_policy: always
     container_name: dpos-validator-app-1
+    network_mode: "service:openethereum"
     depends_on:
       - openethereum
     env_file:
       - ./envs/dpos.chain.env
       - ./envs/validator-app.env
     environment:
-      RPC: http://openethereum:8545
-      NETWORK_NAME: ${NETWORK_NAME}
-      CONSENSUS_ADDRESS: ${CONSENSUS_PROXY:-}
-      BLOCK_REWARD_ADDRESS: ${BLOCK_REWARD_PROXY:-}
+      RPC: http://127.0.0.1:8545
       LOG_LEVEL: info
       MIN_GAS_PRICE: "10000000000"
       KEYSTORE_DIR: /app/keys

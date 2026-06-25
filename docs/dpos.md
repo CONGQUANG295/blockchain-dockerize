@@ -12,6 +12,8 @@ Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of 
 |----------|--------|
 | **[dpos-testnet.md](./dpos-testnet.md)** | **Runbook deploy chain mới — Phase A→F** |
 | **[remote-deploy.md](./remote-deploy.md)** | **Deploy lên server qua Docker Hub (prepare local, sync bundle)** |
+| **[validator-1-custom-contracts.md](./validator-1-custom-contracts.md)** | **Validator-1 với custom contracts GTBS** |
+| [custom-staking-gtbs.md](./custom-staking-gtbs.md) | Chi tiết contract GTBS, owner config, staking-keeper |
 | [POA](./poa.md) | Triển khai PoA (Geth + bootnode) |
 | **[explorer-v11.md](./explorer-v11.md)** | **Explorer DPoS (backend 11.2.1 + frontend 2.8.1)** |
 | [Blockscout v4](./explorer-v4.1.8.md) | Explorer monolith (POA legacy) |
@@ -164,11 +166,17 @@ Từ `blockchain-docker-base` (xem [`README.md`](../../blockchain-docker-base/RE
 
 ```toml
 [rpc]
-interface = "all"    # Bắt buộc cho Docker network
+hosts = ["all"]         # trong container — cho Docker forward từ host
+interface = "all"
+port = 8545
 
 [websockets]
 disable = true
+```
 
+Compose map **`127.0.0.1:8545:8545`** trên host (`overrides/validator-1.override.yml`) — lớp bảo vệ thực sự; **không** đổi thành `0.0.0.0:8545:8545` trừ khi cố ý public RPC.
+
+```toml
 [mining]
 force_sealing = true
 engine_signer = "<VALIDATOR_ADDRESS>"
@@ -246,7 +254,7 @@ Reuse từ `chain-poa`: `docker-compose/services/*`, pattern overrides trong `ov
 | Deploy lỗi "Deployer must be validator-1" | Deployer phải ký bằng keystore validator-1 |
 | Deploy lỗi gas / out of funds | Chỉ xảy ra khi `ENABLE_EIP1559=true`; tăng `VALIDATOR_BALANCE_WEI` hoặc tắt EIP-1559 (deploy zero-gas) |
 | Deploy quá muộn (sau transition block) | Tạo chain mới; tăng `CONTRACT_TRANSITION_BLOCK` |
-| RPC unreachable từ deployer | `interface = "all"` trong validator-1.toml |
+| RPC unreachable từ deployer | Deployer dùng `http://openethereum:8545` trên network `dpos-validator-1_default` (không qua host bind `127.0.0.1:8545`) |
 | Blockscout không sync | `CHAIN_ID`, RPC URL, variant `openethereum` |
 | validator-app skip | Chờ transition; kiểm tra `CONSENSUS_PROXY` / `BLOCK_REWARD_PROXY` |
 

@@ -66,17 +66,7 @@ remote_require_deploy_env() {
 }
 
 remote_wait_for_rpc() {
-  local url="${1:-http://127.0.0.1:8545}"
-  echo "Waiting for RPC at ${url}..."
-  for _ in $(seq 1 60); do
-    if curl -sf -X POST -H "Content-Type: application/json" \
-      --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-      "${url}" >/dev/null 2>&1; then
-      echo "RPC ready"
-      return 0
-    fi
-    sleep 2
-  done
-  echo "RPC not ready at ${url}" >&2
-  return 1
+  # shellcheck source=../wait-for-rpc.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/wait-for-rpc.sh"
+  wait_for_rpc "$@"
 }

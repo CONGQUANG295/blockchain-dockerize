@@ -115,7 +115,7 @@ Build images v11 trước khi deploy (xem [explorer-v11.md](./explorer-v11.md)).
 | Cổng | Giao thức | Mục đích | Ghi chú |
 |------|-----------|----------|---------|
 | 30300 | TCP/UDP | P2P OpenEthereum | Mở public nếu có validator-2 peer |
-| 8545 | TCP | JSON-RPC HTTP | Chỉ mở nội bộ / qua Traefik; validator cần `interface = "all"` trong Docker network |
+| 8545 | TCP | JSON-RPC HTTP | Validator: chỉ `127.0.0.1` trên host (không public). RPC node public qua Traefik |
 | 3006 | TCP | Netstats API | Nội bộ |
 | 80/443 | TCP | Traefik (DApps) | Khi deploy explorer, faucet, status |
 
@@ -161,7 +161,7 @@ make build
 
 Chi tiết nhóm image: [`blockchain-docker-base/README.md`](../../blockchain-docker-base/README.md).
 
-> **Lưu ý:** RPC phải bind `interface = "all"` trong `nodes/validator-1/config.toml` để deployer và DApps trong Docker network gọi được.
+> **Lưu ý:** Validator `[rpc] hosts/interface = "all"` **trong container** — cho phép Docker chuyển tiếp từ host; **không** mở RPC ra internet. Lớp bảo vệ là compose map **`127.0.0.1:8545:8545`** trên host (xem `overrides/validator-1.override.yml`). Deployer / netstats gọi RPC qua hostname Docker **`openethereum:8545`** (cùng network); `validator-app` dùng chung network namespace với node.
 
 ---
 
@@ -345,7 +345,7 @@ docker compose -f compose-deploy-contracts.yml run --rm deployer
 ```
 
 Deployer container:
-- Kết nối RPC qua network `dpos-validator-1_default` → `http://openethereum:8545`
+- Kết nối RPC qua `http://host.docker.internal:8545` (validator map `127.0.0.1:8545` trên host)
 - **Ký giao dịch bằng keystore validator-1** (mount từ `nodes/validator-1/keystore` + `node.pwd`)
 - Script `2_deploy_contract.js` yêu cầu deployer address = `INITIAL_VALIDATOR_ADDRESS` (validator-1)
 - Set `INITIAL_VALIDATOR_ADDRESS` = validator-1
@@ -582,7 +582,7 @@ rm -rf data/dpos-blockscout-db data/proxy/docs
 | `prepare-genesis.sh` exit 1 | Thiếu env hoặc `PREMINE_ADDRESS` = validator | Kiểm tra `dpos.chain.env`, chạy lại sau khi sửa |
 | `Missing required env: VALIDATOR_BALANCE_WEI` | Chưa set biến mới | Thêm vào `dpos.chain.env` theo `.example` |
 | RPC không phản hồi | Container chưa start / crash | `docker logs dpos-testnet-validator-1` |
-| Deployer lỗi "connection refused" | RPC bind localhost thay vì `all` | Kiểm tra `interface = "all"` trong `validator-1.toml` |
+| Deployer lỗi "connection refused" | Validator chưa start hoặc thiếu map `127.0.0.1:8545` | `docker logs dpos-*-validator-1`; kiểm tra `overrides/validator-1.override.yml` |
 | Deployer lỗi "Deployer must be validator-1" | Sai keystore hoặc thiếu `VALIDATOR_1_ADDRESS` | Export `VALIDATOR_1_ADDRESS`, kiểm tra mount keystore trong `compose-deploy-contracts.yml` |
 | Deployer out of gas | `VALIDATOR_BALANCE_WEI` quá thấp **và** `ENABLE_EIP1559=true` | Tăng balance hoặc tắt EIP-1559 (deploy zero-gas) |
 | `restart-validator-1.sh` exit 1 "too late" | Block đã vượt `CONTRACT_TRANSITION_BLOCK` | Tạo chain mới, tăng `CONTRACT_TRANSITION_BLOCK` hoặc giảm `BLOCK_TIME_SECONDS` |

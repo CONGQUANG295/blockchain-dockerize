@@ -1,0 +1,12 @@
+name: dpos-2
+
+include:
+  - path:
+      - ../services/compose-openethereum-node.yml
+      - ../services/compose-netstats-api.yml
+      - ./overrides/2.override.yml
+    env_file:
+      - ./envs/dpos.chain.env
+      - ./envs/images.env
+      - ./envs/netstats-dashboard.env
+      - ./envs/netstats-api.env

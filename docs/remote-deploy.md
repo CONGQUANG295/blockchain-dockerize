@@ -77,6 +77,30 @@ Script này chạy `render-envs.sh` + `prepare-genesis.sh` (phase A: keystore, s
 
 ---
 
+## Bước 2b — SSH key (một lần, khuyến nghị)
+
+Các lệnh `provision-remote`, `sync`, `ssh-deploy-*` dùng **SSH key** — không hỏi password lặp lại.
+
+```bash
+# Tạo key nếu chưa có
+ssh-keygen -t ed25519 -C "$(whoami)@$(hostname)"
+
+# Copy key lên server (nhập password server một lần duy nhất)
+make dpos setup-ssh SERVER=ubuntu@your-server
+```
+
+Hoặc: `ssh-copy-id ubuntu@your-server`
+
+Kiểm tra:
+
+```bash
+ssh -o BatchMode=yes ubuntu@your-server "echo ok"
+```
+
+> Dùng user deploy thường (`ubuntu@`), không khuyến nghị `root@` cho vận hành hàng ngày.
+
+---
+
 ## Bước 3 — Provision server (một lần)
 
 **Từ máy operator:**
@@ -94,6 +118,14 @@ sudo ./scripts/remote/provision-server.sh
 ```
 
 Cài: Docker 20.10+, Compose v2, Node 18+, `jq`, `curl`, `rsync`.
+
+Cấu hình log Docker (`/etc/docker/daemon.json`): **tối đa 3 file × 10MB** mỗi container (`json-file` driver). Tuỳ chỉnh khi provision:
+
+```bash
+sudo DOCKER_LOG_MAX_SIZE=10m DOCKER_LOG_MAX_FILE=3 ./scripts/remote/provision-server.sh
+```
+
+Container đã chạy trước khi đổi daemon cần recreate để áp dụng log mới: `docker compose up -d --force-recreate`.
 
 ---
 
@@ -115,6 +147,8 @@ make dpos sync SERVER=ubuntu@your-server REMOTE_DIR=/opt/blockchain-dock
 Đồng bộ:
 
 - `blockchain-dockerize/docker-compose/chain-dpos/` (genesis, keystore, env, compose, scripts)
+- `blockchain-dockerize/docker-compose/services/` (shared compose fragments cho validator/DApps)
+- `blockchain-dockerize/docker-compose/envs/` (paths `../envs/*.env` trong services compose)
 - `blockchain-docker-base/resources/dpos-contracts/` (script bootstrap trên server)
 
 **Không** sync `nodes/*/data/`, `data/` (DB tạo mới trên server).

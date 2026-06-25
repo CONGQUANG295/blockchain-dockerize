@@ -4,15 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib/paths.sh
 source "${ROOT_DIR}/scripts/lib/paths.sh"
+# shellcheck source=lib/peer-config.sh
+source "${ROOT_DIR}/scripts/lib/peer-config.sh"
 chain_dpos_paths "${ROOT_DIR}"
-chain_dpos_ensure_node_dirs
+peer_config_ensure_dirs
 
-if [ ! -f "${PATH_VALIDATOR_ENODE}" ]; then
-  echo "Missing ${PATH_VALIDATOR_ENODE}. Run get_enode.sh after bootstrap." >&2
-  exit 1
+if [ ! -f "${PATH_GENESIS_RESERVED_PEERS}" ]; then
+  if [ -f "${PATH_VALIDATOR_ENODE}" ]; then
+    "${ROOT_DIR}/scripts/export-peer-config.sh" --skip-enode-refresh
+  else
+    echo "Missing ${PATH_GENESIS_RESERVED_PEERS}. Run export-peer-config.sh after bootstrap." >&2
+    exit 1
+  fi
 fi
 
-cp "${PATH_TEMPLATES}/rpc.toml.template" "${PATH_RPC_CONFIG}"
-cp "${PATH_VALIDATOR_ENODE}" "${PATH_RESERVED_PEERS}"
-echo "Wrote ${PATH_RPC_CONFIG}"
-echo "Wrote ${PATH_RESERVED_PEERS}"
+exec "${ROOT_DIR}/scripts/prepare-new-node.sh" --type rpc "$@"
+

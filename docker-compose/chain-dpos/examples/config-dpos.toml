@@ -9,8 +9,8 @@ base_path = "./nodes/validator1/"
 port = 30300
 
 [rpc]
-cors = ["all"]
 hosts = ["all"]
+interface = "all"
 port = 8545
 
 [websockets]
