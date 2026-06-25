@@ -2,6 +2,8 @@
 
 Triển khai chain DPoS lên server **không clone git trên server**. Operator chuẩn bị trên máy local; server chỉ cài môi trường, `docker pull`, và `docker compose up`.
 
+> **Makefile:** Các bước dưới có thể chạy qua `make` từ root `blockchain-dock/`. Xem [docs/makefile.md](../../docs/makefile.md).
+
 ## Luồng tổng quan
 
 ```mermaid
@@ -41,6 +43,13 @@ docker login
 ./scripts/build-and-push.sh --push --namespace <dockerhub-user>
 ```
 
+Hoặc từ root monorepo:
+
+```bash
+make build login
+make build push DOCKERHUB_NAMESPACE=<dockerhub-user>
+```
+
 Chi tiết: [`blockchain-docker-base/README.md`](../../blockchain-docker-base/README.md).
 
 ---
@@ -56,6 +65,14 @@ cp envs/deploy.env.example envs/deploy.env
 ./scripts/local/prepare-deploy.sh --with-traefik
 ```
 
+Makefile:
+
+```bash
+make dpos init
+# chỉnh envs/deploy.env
+make dpos prepare-remote WITH_TRAEFIK=1
+```
+
 Script này chạy `render-envs.sh` + `prepare-genesis.sh` (phase A: keystore, spec phase-1).
 
 ---
@@ -67,6 +84,8 @@ Script này chạy `render-envs.sh` + `prepare-genesis.sh` (phase A: keystore, s
 ```bash
 ./scripts/local/provision-remote.sh ubuntu@your-server
 ```
+
+Makefile: `make dpos provision-remote SERVER=ubuntu@your-server`
 
 **Hoặc trên server:**
 
@@ -84,6 +103,13 @@ Cài: Docker 20.10+, Compose v2, Node 18+, `jq`, `curl`, `rsync`.
 ./scripts/local/sync-to-server.sh ubuntu@your-server
 # Tuỳ chọn custom path:
 # ./scripts/local/sync-to-server.sh ubuntu@your-server /opt/blockchain-dock
+```
+
+Makefile:
+
+```bash
+make dpos sync SERVER=ubuntu@your-server
+make dpos sync SERVER=ubuntu@your-server REMOTE_DIR=/opt/blockchain-dock
 ```
 
 Đồng bộ:
@@ -107,6 +133,20 @@ cd /opt/blockchain-dock/blockchain-dockerize/docker-compose/chain-dpos
 
 # DApps: RPC + Blockscout v11 + Traefik (+ faucet nếu testnet)
 ./scripts/remote/deploy-dapps.sh
+```
+
+Makefile (từ operator, qua SSH):
+
+```bash
+make dpos ssh-deploy-validator SERVER=ubuntu@your-server WITH_TRAEFIK=1
+make dpos ssh-deploy-dapps SERVER=ubuntu@your-server
+```
+
+Hoặc trên server sau khi SSH:
+
+```bash
+make deploy-remote-validator WITH_TRAEFIK=1
+make deploy-remote-dapps
 ```
 
 ### Chỉ validator (không DApps)
@@ -140,18 +180,20 @@ Trước `deploy-dapps.sh` với Traefik:
 
 ## Scripts tham chiếu
 
-| Script | Chạy ở | Mục đích |
-|--------|--------|----------|
-| `scripts/local/prepare-deploy.sh` | Operator | Render env + genesis |
-| `scripts/local/sync-to-server.sh` | Operator | Rsync bundle |
-| `scripts/local/provision-remote.sh` | Operator | SSH provision server |
-| `scripts/remote/provision-server.sh` | Server | Cài Docker + tools |
-| `scripts/remote/deploy-validator.sh` | Server | Chain + validator-app |
-| `scripts/remote/deploy-dapps.sh` | Server | DApps stack |
+| Script | Chạy ở | Mục đích | Make (từ repo root) |
+|--------|--------|----------|---------------------|
+| `scripts/local/prepare-deploy.sh` | Operator | Render env + genesis | `make dpos prepare-remote WITH_TRAEFIK=1` |
+| `scripts/local/sync-to-server.sh` | Operator | Rsync bundle | `make dpos sync SERVER=user@host` |
+| `scripts/local/provision-remote.sh` | Operator | SSH provision server | `make dpos provision-remote SERVER=user@host` |
+| `scripts/remote/provision-server.sh` | Server | Cài Docker + tools | _(chạy trực tiếp trên server)_ |
+| `scripts/remote/deploy-validator.sh` | Server | Chain + validator-app | `make dpos ssh-deploy-validator SERVER=...` hoặc `make deploy-remote-validator` trên server |
+| `scripts/remote/deploy-dapps.sh` | Server | DApps stack | `make dpos ssh-deploy-dapps SERVER=...` hoặc `make deploy-remote-dapps` trên server |
+| `scripts/build-and-push.sh --push` | Operator / CI | Push images Docker Hub | `make build push DOCKERHUB_NAMESPACE=...` |
 
 ---
 
 ## Liên quan
 
 - [dpos-testnet.md](./dpos-testnet.md) — Chi tiết phase A–F, biến env, troubleshooting
+- [validator-1-custom-contracts.md](./validator-1-custom-contracts.md) — Validator-1 với custom contracts (GTBS)
 - [dpos.md](./dpos.md) — Kiến trúc tổng quan

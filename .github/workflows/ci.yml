@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  makefile-syntax:
+    name: Validate Makefiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Makefiles parse
+        run: |
+          make -n help
+          make -n dpos help
+          make -n poa help
+          make -C docker-compose/chain-dpos -n render
+          make -C docker-compose/chain-poa -n validator-1-up
+
+  lint-compose-dpos:
+    name: Lint DPoS compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose configs
+        run: |
+          cd docker-compose/chain-dpos
+          cp envs/deploy.env.example envs/deploy.env
+          ./scripts/render-envs.sh envs/deploy.env --with-traefik
+          docker compose -f compose-validator-1.yml config
+          docker compose -f compose-dapps-traefik-v11.yml config

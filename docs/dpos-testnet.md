@@ -15,14 +15,16 @@ flowchart LR
     E --> F["Phase F\nExport enode\n+ DApps"]
 ```
 
-| Phase | Mục đích | Script / lệnh |
-|-------|----------|---------------|
-| A | Tạo keystore validator, spec phase-1 (validator list tĩnh, chưa có contract) | `prepare-genesis.sh` |
-| B | Khởi động OpenEthereum, chain mine block 0…N | `compose-validator-1.yml up` |
-| C | Deploy Consensus + BlockReward qua RPC (ký bằng validator-1) | `compose-deploy-contracts.yml` |
-| D | Gắn địa chỉ contract vào spec, restart node | `patch-spec-after-deploy.sh`, `restart-validator-1.sh` |
-| E | Chờ block ≥ `CONTRACT_TRANSITION_BLOCK`, verify on-chain | `verify-contracts-transition.sh` |
-| F | Xuất enode, bật validator-app / DApps (tuỳ chọn) | `get_enode.sh`, `compose-dapps-traefik-v11.yml` |
+| Phase | Mục đích | Script / lệnh | Make (từ repo root) |
+|-------|----------|---------------|---------------------|
+| A | Tạo keystore validator, spec phase-1 (validator list tĩnh, chưa có contract) | `prepare-genesis.sh` | `make dpos genesis` |
+| B | Khởi động OpenEthereum, chain mine block 0…N | `compose-validator-1.yml up` | `make dpos validator-up` |
+| C | Deploy Consensus + BlockReward qua RPC (ký bằng validator-1) | `compose-deploy-contracts.yml` | _(trong `bootstrap` / `deploy`)_ |
+| D | Gắn địa chỉ contract vào spec, restart node | `patch-spec-after-deploy.sh`, `restart-validator-1.sh` | `make dpos patch-spec` → `make dpos validator-restart` |
+| E | Chờ block ≥ `CONTRACT_TRANSITION_BLOCK`, verify on-chain | `verify-contracts-transition.sh` | `make dpos verify` |
+| F | Xuất enode, bật validator-app / DApps (tuỳ chọn) | `get_enode.sh`, `compose-dapps-traefik-v11.yml` | `make dpos enode` → `make dpos dapps-up` |
+
+> Chi tiết Makefile: [makefile.md](./makefile.md).
 
 > **Ràng buộc thời gian quan trọng:** Phase C + D phải hoàn tất **trước** khi `current_block >= CONTRACT_TRANSITION_BLOCK`. Nếu quá block transition mà chưa patch spec, phải tạo chain mới.
 
@@ -38,6 +40,21 @@ cp envs/deploy.env.example envs/deploy.env
 # Chỉnh NETWORK_NAME, NETWORK_ID, PREMINE_ADDRESS, domains (EXPLORER/STATS/VISUALIZE/RPC), ACME_EMAIL
 ./scripts/deploy-all.sh --with-traefik
 ```
+
+**Makefile (từ root monorepo `blockchain-dock/`):**
+
+```bash
+make dpos init
+# chỉnh blockchain-dockerize/docker-compose/chain-dpos/envs/deploy.env
+make dpos deploy WITH_TRAEFIK=1
+```
+
+| Flag script | Biến Make tương đương |
+|-------------|----------------------|
+| `--chain-only` | `make dpos deploy CHAIN_ONLY=1` |
+| `--dapps-only` | `make dpos deploy-dapps` |
+| `--with-traefik` | `WITH_TRAEFIK=1` |
+| `--skip-health` | `SKIP_HEALTH=1` |
 
 **Deploy lên server qua Docker Hub (không clone git trên server):** xem **[remote-deploy.md](./remote-deploy.md)** — `prepare-deploy.sh` local → `sync-to-server.sh` → `deploy-validator.sh` / `deploy-dapps.sh` trên server.
 
@@ -131,6 +148,15 @@ cd blockchain-docker-base
 
 # Hoặc build tất cả
 ./scripts/build-and-push.sh
+```
+
+Từ root monorepo:
+
+```bash
+make build build-chain
+make build build-explorer
+make build build-dapps
+make build
 ```
 
 Chi tiết nhóm image: [`blockchain-docker-base/README.md`](../../blockchain-docker-base/README.md).
