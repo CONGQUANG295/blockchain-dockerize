@@ -2,5 +2,7 @@ services:
   frontend:
     depends_on:
       - backend
+    environment:
+      HOSTNAME: "0.0.0.0"
     env_file:
       - ../../chain-dpos/envs/blockscout-frontend.env

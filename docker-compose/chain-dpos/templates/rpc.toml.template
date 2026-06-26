@@ -11,7 +11,7 @@ cors = ["all"]
 hosts = ["all"]
 interface = "all"
 port = 8545
-apis = ["eth", "net", "parity", "web3", "trace"]
+apis = ["eth", "net", "parity", "web3", "traces"]
 
 [websockets]
 disable = false

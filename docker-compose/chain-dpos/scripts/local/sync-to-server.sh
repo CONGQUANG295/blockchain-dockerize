@@ -32,7 +32,8 @@ Options:
   --dry-run      Print rsync command without syncing
   -h, --help     Show this help
 
-Excludes: nodes/*/data, data/* (chain); node_modules, cache, artifacts (contracts).
+Excludes: nodes/*/data, chain-dpos/data/*, services/data/* (runtime DB/chain);
+          node_modules, cache, artifacts (contracts).
 Includes: genesis, keystore, envs, compose, scripts, dpos-contracts scripts/config,
           docker-compose/services, docker-compose/envs (shared compose env paths).
 EOF
@@ -109,10 +110,19 @@ CHAIN_EXCLUDES=(
   --exclude 'nodes/validator-1/data/'
   --exclude 'nodes/rpc/data/'
   --exclude 'data/'
+  --exclude 'genesis/spec.json'
   --exclude 'genesis/contract-addresses.json'
   --exclude 'genesis/reserved-peers.txt'
   --exclude 'genesis/validator-1.enode'
   --exclude 'genesis/peers/'
+  # Generated on server by prepare-envs-dapps.sh / generate-blockscout-v11.sh
+  --exclude 'traefik/dynamic/blockscout-v11.yml'
+  --exclude 'traefik/dynamic/middlewares.yml'
+  --exclude '.git/'
+)
+
+SERVICES_EXCLUDES=(
+  --exclude 'data/'
   --exclude '.git/'
 )
 
@@ -171,7 +181,7 @@ EOF
 ensure_remote_dirs
 
 run_rsync "${CONTRACTS_DIR}/" "${REMOTE}:${REMOTE_CONTRACTS}/" "${CONTRACTS_EXCLUDES[@]}"
-run_rsync "${SERVICES_DIR}/" "${REMOTE}:${REMOTE_SERVICES}/" --exclude '.git/'
+run_rsync "${SERVICES_DIR}/" "${REMOTE}:${REMOTE_SERVICES}/" "${SERVICES_EXCLUDES[@]}"
 run_rsync "${COMPOSE_ENVS_DIR}/" "${REMOTE}:${REMOTE_COMPOSE_ENVS}/" --exclude '.git/'
 run_rsync "${ROOT_DIR}/" "${REMOTE}:${REMOTE_CHAIN}/" "${CHAIN_EXCLUDES[@]}"
 

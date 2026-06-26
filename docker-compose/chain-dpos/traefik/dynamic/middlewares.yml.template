@@ -7,6 +7,12 @@ http:
         customRequestHeaders:
           X-Forwarded-Proto: https
 
+    rpc-ratelimit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+
     metrics-deny:
       ipAllowList:
         sourceRange:

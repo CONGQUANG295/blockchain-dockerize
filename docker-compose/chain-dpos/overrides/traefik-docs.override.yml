@@ -1,11 +1,11 @@
 services:
   docs-static:
-    volumes:
+    volumes: !override
       - ../data/proxy/docs:/usr/share/nginx/html:ro
     labels:
       - traefik.enable=true
       - traefik.docker.network=dpos-proxy
-      - traefik.http.routers.${NETWORK_TYPE:-testnet}-docs.rule=Host(`${DOCS_SERVER_NAME}`) || Host(`www.${DOCS_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-docs.rule=Host(`${DOCS_SERVER_NAME}`)
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-docs.entrypoints=websecure
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-docs.tls.certresolver=letsencrypt
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-docs.service=${NETWORK_TYPE:-testnet}-docs

@@ -12,6 +12,10 @@ set +a
 
 RPC_CONTAINER="dpos-${NETWORK_TYPE:-testnet}-rpc"
 VALIDATOR_CONTAINER="dpos-${NETWORK_TYPE:-testnet}-validator-1"
+VALIDATOR_RUNNING=false
+if docker ps --format '{{.Names}}' | grep -qx "${VALIDATOR_CONTAINER}"; then
+  VALIDATOR_RUNNING=true
+fi
 
 rpc_call() {
   local container="$1"
@@ -32,13 +36,21 @@ while [ "${elapsed}" -lt "${TIMEOUT}" ]; do
   syncing="$(rpc_call "${RPC_CONTAINER}" eth_syncing)"
   if echo "${syncing}" | grep -q '"result":false'; then
     rpc_block="$(rpc_call "${RPC_CONTAINER}" eth_blockNumber | sed -n 's/.*"result":"\(0x[^"]*\)".*/\1/p')"
-    val_block="$(rpc_call "${VALIDATOR_CONTAINER}" eth_blockNumber | sed -n 's/.*"result":"\(0x[^"]*\)".*/\1/p')"
-    if [ -n "${rpc_block}" ] && [ -n "${val_block}" ]; then
+    if [ "${VALIDATOR_RUNNING}" = true ]; then
+      val_block="$(rpc_call "${VALIDATOR_CONTAINER}" eth_blockNumber | sed -n 's/.*"result":"\(0x[^"]*\)".*/\1/p')"
+      if [ -n "${rpc_block}" ] && [ -n "${val_block}" ]; then
+        rpc_dec="$(hex_to_dec "${rpc_block}")"
+        val_dec="$(hex_to_dec "${val_block}")"
+        diff=$((val_dec - rpc_dec))
+        if [ "${diff#-}" -le 2 ]; then
+          echo "RPC synced at block ${rpc_dec} (validator ${val_dec})"
+          break
+        fi
+      fi
+    elif [ -n "${rpc_block}" ]; then
       rpc_dec="$(hex_to_dec "${rpc_block}")"
-      val_dec="$(hex_to_dec "${val_block}")"
-      diff=$((val_dec - rpc_dec))
-      if [ "${diff#-}" -le 2 ]; then
-        echo "RPC synced at block ${rpc_dec} (validator ${val_dec})"
+      if [ "${rpc_dec}" -gt 0 ]; then
+        echo "RPC synced at block ${rpc_dec} (no local validator)"
         break
       fi
     fi

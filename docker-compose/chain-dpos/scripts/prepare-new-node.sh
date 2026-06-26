@@ -95,6 +95,8 @@ case "${NODE_TYPE}" in
   rpc)
     peer_config_ensure_dirs
     cp "${PATH_TEMPLATES}/rpc.toml.template" "${PATH_RPC_CONFIG}"
+    # OpenEthereum v3.3.x RPC namespace is "traces" (plural), not "trace".
+    sed -i '/^apis = /s/"trace"/"traces"/g' "${PATH_RPC_CONFIG}"
     cp "${PATH_GENESIS_RESERVED_PEERS}" "${PATH_RESERVED_PEERS}"
     echo "Prepared RPC node:"
     echo "  ${PATH_RPC_CONFIG}"

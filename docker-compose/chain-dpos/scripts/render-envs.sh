@@ -62,6 +62,7 @@ CHAIN_ID_DEC=$((16#${NETWORK_ID#0x}))
 COIN_NAME="${COIN_NAME:-Coin}"
 COIN_SYMBOL="${COIN_SYMBOL:-COIN}"
 NEXT_PUBLIC_IS_TESTNET="${NEXT_PUBLIC_IS_TESTNET:-$([ "${NETWORK_TYPE}" = testnet ] && echo true || echo false)}"
+EXPLORER_ASSETS_BASE_URL="${EXPLORER_ASSETS_BASE_URL:-https://raw.githubusercontent.com/gtbschain/assets/master/explorer}"
 
 ENVS_DIR="${ROOT_DIR}/envs"
 mkdir -p "${ENVS_DIR}"
@@ -173,9 +174,9 @@ STATS_DB_PASSWORD="${STATS_DB_PASSWORD:-$(gen_hex)}"
 
 cat > "${ENVS_DIR}/blockscout-backend.env" <<EOF
 SECRET_KEY_BASE=${SECRET_KEY_BASE}
-DATABASE_URL=postgresql://blockscout:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+DATABASE_URL=postgresql://blockscout:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
 ETHEREUM_JSONRPC_VARIANT=nethermind
-BLOCK_TRANSFORMER=clique
+BLOCK_TRANSFORMER=base
 ETHEREUM_JSONRPC_HTTP_URL=http://rpc.host:8545/
 ETHEREUM_JSONRPC_TRACE_URL=http://rpc.host:8545/
 ETHEREUM_JSONRPC_WS_URL=ws://rpc.host:8546/
@@ -183,11 +184,55 @@ CHAIN_ID=${CHAIN_ID_DEC}
 COIN=${COIN_SYMBOL}
 COIN_NAME=${COIN_NAME}
 DISABLE_MARKET=true
+POOL_SIZE=80
+POOL_SIZE_API=20
+INDEXER_DISABLE_INTERNAL_TRANSACTIONS_FETCHER=true
+INDEXER_DISABLE_PENDING_TRANSACTIONS_FETCHER=true
+INDEXER_RECEIPTS_CONCURRENCY=5
+INDEXER_CATCHUP_BLOCKS_CONCURRENCY=5
 EOF
 
 cat > "${ENVS_DIR}/rpc.env" <<EOF
 OE_CONFIG_PATH=/app/config/config.toml
 EOF
+
+# Append Blockscout address display envs to blockscout-frontend.env (Option A: native bech32)
+append_address_display_envs() {
+  local prefix="${ADDRESS_DISPLAY_PREFIX:-}"
+  local default_fmt="${ADDRESS_DISPLAY_DEFAULT:-bech32}"
+  local toggle="${ADDRESS_FORMAT_TOGGLE:-true}"
+
+  [ -n "${prefix}" ] || return 0
+
+  local prefix_len=${#prefix}
+  if [ "${prefix_len}" -lt 1 ] || [ "${prefix_len}" -gt 83 ]; then
+    echo "ADDRESS_DISPLAY_PREFIX must be 1–83 characters (got length ${prefix_len})" >&2
+    exit 1
+  fi
+
+  local format_json=""
+  if [ "${toggle}" = true ]; then
+    if [ "${default_fmt}" = base16 ]; then
+      format_json="['base16','bech32']"
+    else
+      format_json="['bech32','base16']"
+    fi
+  else
+    if [ "${default_fmt}" = base16 ]; then
+      format_json="['base16']"
+    else
+      format_json="['bech32']"
+    fi
+  fi
+
+  echo "NEXT_PUBLIC_VIEWS_ADDRESS_FORMAT=${format_json}" >> "${ENVS_DIR}/blockscout-frontend.env"
+
+  case "${format_json}" in
+    *bech32*)
+      echo "NEXT_PUBLIC_VIEWS_ADDRESS_BECH_32_PREFIX=${prefix}" >> "${ENVS_DIR}/blockscout-frontend.env"
+      ;;
+  esac
+}
 
 cat > "${ENVS_DIR}/blockscout-frontend.env" <<EOF
 NEXT_PUBLIC_API_HOST=${EXPLORER_SERVER_NAME:-explorer.local}
@@ -207,8 +252,15 @@ NEXT_PUBLIC_NETWORK_CURRENCY_DECIMALS=18
 NEXT_PUBLIC_IS_TESTNET=${NEXT_PUBLIC_IS_TESTNET}
 NEXT_PUBLIC_BLOCK_TIME_SECONDS=${BLOCK_TIME_SECONDS}
 NEXT_PUBLIC_HOMEPAGE_CHARTS=['daily_txs']
-NEXT_PUBLIC_API_SPEC_URL=https://raw.githubusercontent.com/blockscout/blockscout-api-v2-swagger/main/swagger.yaml
 EOF
+
+append_address_display_envs
+
+if [ "${EXPLORER_CUSTOM_PROFILE:-}" != "gtbs" ]; then
+  cat >> "${ENVS_DIR}/blockscout-frontend.env" <<EOF
+NEXT_PUBLIC_FOOTER_PROJECT_CONFIG={"title":"Powered by ${COIN_NAME}","description":"Block explorer for ${NETWORK_NAME}.","copyright":"${COIN_NAME}"}
+EOF
+fi
 
 if [ -n "${EXPLORER_HERO_TITLE:-}" ]; then
   echo "NEXT_PUBLIC_HOMEPAGE_HERO_TITLE=${EXPLORER_HERO_TITLE}" >> "${ENVS_DIR}/blockscout-frontend.env"
@@ -217,18 +269,28 @@ fi
 if [ "${EXPLORER_CUSTOM_PROFILE:-}" = "gtbs" ]; then
   GTBS_FRONTEND_EXAMPLE="${ROOT_DIR}/envs/blockscout-frontend.gtbs.env.example"
   GTBS_BACKEND_EXAMPLE="${ROOT_DIR}/envs/blockscout-backend.gtbs.env.example"
+  CONSENSUS_PROXY="0x0000000000000000000000000000000000000000"
+  STAKING_VAULT_PROXY=""
+  if [ -f "${ROOT_DIR}/genesis/contract-addresses.json" ] && command -v jq >/dev/null; then
+    _consensus="$(jq -r '.consensusProxy // empty' "${ROOT_DIR}/genesis/contract-addresses.json")"
+    [ -n "${_consensus}" ] && CONSENSUS_PROXY="${_consensus}"
+    _staking="$(jq -r '.stakingVault // empty' "${ROOT_DIR}/genesis/contract-addresses.json")"
+    [ -n "${_staking}" ] && STAKING_VAULT_PROXY="${_staking}"
+  fi
+  export CONSENSUS_PROXY STAKING_VAULT_PROXY RPC_SERVER_NAME EXPLORER_SERVER_NAME EXPLORER_ASSETS_BASE_URL COIN_SYMBOL NETWORK_NAME
   if [ -f "${GTBS_FRONTEND_EXAMPLE}" ]; then
-    grep -v '^#' "${GTBS_FRONTEND_EXAMPLE}" | grep -v '^$' >> "${ENVS_DIR}/blockscout-frontend.env"
+    grep -v '^#' "${GTBS_FRONTEND_EXAMPLE}" | grep -v '^$' | envsubst >> "${ENVS_DIR}/blockscout-frontend.env"
   fi
   if [ -f "${GTBS_BACKEND_EXAMPLE}" ]; then
-    grep -v '^#' "${GTBS_BACKEND_EXAMPLE}" | grep -v '^$' >> "${ENVS_DIR}/blockscout-backend.env"
+    grep -v '^#' "${GTBS_BACKEND_EXAMPLE}" | grep -v '^$' | envsubst >> "${ENVS_DIR}/blockscout-backend.env"
   fi
 fi
 
 cat > "${ENVS_DIR}/blockscout-stats.env" <<EOF
 STATS_DB_PASSWORD=${STATS_DB_PASSWORD}
+POSTGRES_PASSWORD=${STATS_DB_PASSWORD}
 STATS__DB_URL=postgres://stats:${STATS_DB_PASSWORD}@stats-db:5432/stats
-STATS__BLOCKSCOUT_DB_URL=postgresql://blockscout:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+STATS__BLOCKSCOUT_DB_URL=postgresql://blockscout:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
 STATS__CREATE_DATABASE=true
 STATS__RUN_MIGRATIONS=true
 STATS__BLOCKSCOUT_API_URL=http://backend:4000

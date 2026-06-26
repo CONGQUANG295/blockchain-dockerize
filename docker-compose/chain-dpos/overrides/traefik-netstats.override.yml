@@ -6,7 +6,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=dpos-proxy
-      - traefik.http.routers.${NETWORK_TYPE:-testnet}-status.rule=Host(`${STATUS_SERVER_NAME}`) || Host(`www.${STATUS_SERVER_NAME}`)
+      - traefik.http.routers.${NETWORK_TYPE:-testnet}-status.rule=Host(`${STATUS_SERVER_NAME}`)
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-status.entrypoints=websecure
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-status.tls.certresolver=letsencrypt
       - traefik.http.routers.${NETWORK_TYPE:-testnet}-status.service=${NETWORK_TYPE:-testnet}-status

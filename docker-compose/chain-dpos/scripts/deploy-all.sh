@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
+# shellcheck source=remote/lib.sh
+source "${ROOT_DIR}/scripts/remote/lib.sh"
 
 CHAIN_ONLY=false
 DAPPS_ONLY=false
@@ -55,6 +57,8 @@ WITH_TRAEFIK_PREPARE=$([ "${WITH_TRAEFIK}" = true ] && echo true || echo false) 
 set -a
 # shellcheck disable=SC1090
 source envs/dpos.chain.env
+source envs/db.env
+source envs/blockscout-stats.env
 set +a
 
 COMPOSE_ARGS=(-f compose-dapps-traefik-v11.yml)
@@ -65,6 +69,7 @@ else
 fi
 
 docker compose "${COMPOSE_ARGS[@]}" pull
+remote_ensure_postgres_data_permissions "${COMPOSE_ARGS[@]}"
 docker compose "${COMPOSE_ARGS[@]}" up -d
 
 if [ "${SKIP_HEALTH}" = false ]; then

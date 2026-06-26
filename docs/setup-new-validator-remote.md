@@ -8,14 +8,20 @@ Hướng dẫn thêm **validator mới** (non-seed) vào mạng DPoS đã chạy
 - Chain **không dùng bootnode** — peering qua static enode trong `reserved-peers.txt`.
 - **Stake** (`MIN_STAKE_TOKENS`) làm thủ công sau — không nằm trong guide này.
 
-**Biến mẫu** (thay theo môi trường thực tế):
+**Biến mẫu** — cấu hình trong `envs/deploy.env` (Makefile đọc tự động) hoặc truyền trên CLI:
 
 | Biến | Ví dụ | Ghi chú |
 |------|--------|---------|
-| `SEED_SERVER` | `root@91.229.245.75` | Host chạy validator-1 |
-| `REMOTE_SERVER` | `root@203.0.113.50` | Host chạy validator mới |
-| `REMOTE_DIR` | `/opt/blockchain-dock` | Thư mục deploy trên server |
+| `SEED_SERVER` | `root@91.229.245.75` | Host chạy validator-1 — trong `deploy.env` |
+| `REMOTE_DEPLOY_DIR` | `/opt/blockchain-gtbs` | Thư mục deploy trên server — trong `deploy.env` |
+| `SERVER` (CLI) | `root@203.0.113.50` | Host validator **mới** — bắt buộc truyền (chưa có biến `deploy.env` riêng) |
 | `NODE_ID` | `validator-2` | Tên thư mục `nodes/<NODE_ID>/` (auto nếu bỏ qua) |
+
+```env
+# envs/deploy.env — ví dụ
+REMOTE_DEPLOY_DIR=/opt/blockchain-gtbs
+SEED_SERVER=root@91.229.245.75
+```
 
 ---
 
@@ -30,42 +36,36 @@ Chạy trong `blockchain-dockerize/docker-compose/chain-dpos`. Xem đầy đủ:
 | `make render` | Render env từ `deploy.env` |
 | `make setup-ssh SERVER=...` | SSH key lên server (một lần) |
 | `make provision-remote SERVER=... OPEN_P2P_PORT=1` | Cài Docker + tool trên server |
-| **`make prepare-new-validator-local SEED_SERVER=...`** | **Kéo peer bundle từ seed + tạo `nodes/<NODE_ID>/`** |
-| `make pull-peer-config SERVER=...` | Chỉ kéo bundle (không tạo keystore) |
+| **`make prepare-new-validator-local`** | **Tạo `nodes/<NODE_ID>/`** (tự skip pull nếu peer bundle đã có local; `SEED_SERVER` từ `deploy.env`) |
+| `make pull-peer-config` | Chỉ kéo bundle từ seed (`SEED_SERVER` trong `deploy.env`) |
+| `make sync-peer-bundle EXPLORER=1` | Đẩy peer bundle lên explorer (`EXPLORER_SERVER`) |
 | `make prepare-new-node TYPE=validator [NODE_ID=...]` | Chỉ tạo keystore (cần bundle sẵn; auto `validator-N` nếu bỏ `NODE_ID`) |
 | **`make sync-new-validator SERVER=... NODE_ID=...`** | **Rsync node validator mới lên server remote** |
 | **`make ssh-new-validator-up SERVER=... NODE_ID=...`** | **SSH: prepare + docker compose up trên server** |
-| `make ssh-new-validator-prepare SERVER=... NODE_ID=...` | SSH: chỉ render env + tạo compose trên server |
-| `make ssh-new-validator-down / ssh-new-validator-logs` | SSH: down / follow logs |
-| `make sync SERVER=...` | Rsync cho **seed deploy** — không dùng cho validator mới |
+| `make ssh-new-validator-prepare / down / logs` | SSH: prepare / down / follow logs |
+| `make sync SEED=1` \| `EXPLORER=1` \| `SERVER=...` | Rsync full bundle — chọn server bằng cờ hoặc `SERVER=` |
 
 **Luồng make gọn (local):**
 
 ```bash
 cd blockchain-dockerize/docker-compose/chain-dpos
 
-# Phase 0 — một lần
+# Phase 0 — một lần (set SEED_SERVER + REMOTE_DEPLOY_DIR trong deploy.env)
 make init && $EDITOR envs/deploy.env && make render
-make setup-ssh SERVER="${REMOTE_SERVER}"
-make provision-remote SERVER="${REMOTE_SERVER}" REMOTE_DIR="${REMOTE_DIR}" OPEN_P2P_PORT=1
+make setup-ssh SERVER=root@<IP_VALIDATOR_MOI>
+make provision-remote SERVER=root@<IP_VALIDATOR_MOI> OPEN_P2P_PORT=1
 
-# Phase A — chuẩn bị validator mới trên local (1 lệnh)
-make prepare-new-validator-local \
-  SEED_SERVER="${SEED_SERVER}" \
-  REMOTE_DIR="${REMOTE_DIR}" \
-  NODE_ID="${NODE_ID}"
+# Phase A — chuẩn bị validator mới trên local (SEED_SERVER từ deploy.env)
+make prepare-new-validator-local NODE_ID="${NODE_ID:-validator-2}"
 
 # Ghi NODE_ID thực tế script vừa tạo (nếu không truyền — thường validator-2, validator-3, …)
 NODE_ID="${NODE_ID:-$(ls -d nodes/validator-* 2>/dev/null | sed 's|.*/||' | sort -t- -k2 -n | tail -1)}"
 
 # Phase B — đẩy lên server remote
-make sync-new-validator SERVER="${REMOTE_SERVER}" NODE_ID="${NODE_ID}" REMOTE_DIR="${REMOTE_DIR}"
+make sync-new-validator SERVER=root@<IP_VALIDATOR_MOI> NODE_ID="${NODE_ID}"
 
 # Phase C+E — start validator trên server (từ máy operator)
-make ssh-new-validator-up \
-  SERVER="${REMOTE_SERVER}" \
-  NODE_ID="${NODE_ID}" \
-  REMOTE_DIR="${REMOTE_DIR}"
+make ssh-new-validator-up SERVER=root@<IP_VALIDATOR_MOI> NODE_ID="${NODE_ID}"
 ```
 
 > `ssh-new-validator-up` tự chạy `prepare-new-validator.sh` trên server (render env + tạo `compose-<NODE_ID>.yml`) nếu chưa có.
@@ -153,7 +153,8 @@ Chỉnh `envs/deploy.env`:
 |------|---------|
 | `NETWORK_NAME`, `NETWORK_ID`, `NETWORK_TYPE` | Giống seed |
 | `DOCKERHUB_NAMESPACE` | Namespace image trên Docker Hub |
-| `REMOTE_DEPLOY_DIR` | Thường `/opt/blockchain-dock` |
+| `REMOTE_DEPLOY_DIR` | Thường `/opt/blockchain-gtbs` — Make đọc làm `REMOTE_DIR` |
+| `SEED_SERVER` | SSH seed host — `pull-peer-config`, `prepare-new-validator-local` |
 | `P2P_PORT` | `30300` |
 
 > Có thể copy `deploy.env` từ seed host thay vì tạo mới — đảm bảo `NETWORK_*` và `DOCKERHUB_NAMESPACE` không lệch.
@@ -171,31 +172,27 @@ Server remote: Ubuntu/Debian, user có `sudo`, port SSH mở.
 ```bash
 cd blockchain-dockerize/docker-compose/chain-dpos
 
-make setup-ssh SERVER="${REMOTE_SERVER}"
-# hoặc: ./scripts/local/setup-ssh.sh "${REMOTE_SERVER}"
+make setup-ssh SERVER=root@<IP_VALIDATOR_MOI>
+# hoặc: ./scripts/local/setup-ssh.sh root@<IP_VALIDATOR_MOI>
 ```
 
-**Bước 2 — Cài Docker, Compose, Node, jq, rsync, tạo `${REMOTE_DIR}`:**
+**Bước 2 — Cài Docker, Compose, Node, jq, rsync, tạo thư mục deploy:**
 
 ```bash
-make provision-remote \
-  SERVER="${REMOTE_SERVER}" \
-  REMOTE_DIR="${REMOTE_DIR}" \
-  OPEN_P2P_PORT=1
+make provision-remote SERVER=root@<IP_VALIDATOR_MOI> OPEN_P2P_PORT=1
 ```
 
-`provision-remote` chạy `scripts/remote/provision-server.sh` trên server remote và cài:
+`REMOTE_DIR` lấy từ `REMOTE_DEPLOY_DIR` trong `deploy.env`. `provision-remote` chạy `scripts/remote/provision-server.sh` trên server remote và cài:
 
 - Docker CE + Compose plugin v2
 - Node.js 18+, `jq`, `curl`, `rsync`, `git`, `make`
-- Thư mục deploy `${REMOTE_DIR}` (owner = user SSH)
+- Thư mục deploy (owner = user SSH)
 - *(Tuỳ chọn)* Mở ufw port `30300` TCP/UDP khi `OPEN_P2P_PORT=1`
 
 Kiểm tra trên server remote:
 
 ```bash
-ssh "${REMOTE_SERVER}" "docker --version && docker compose version && jq --version && node -v"
-```
+ssh root@<IP_VALIDATOR_MOI> "docker --version && docker compose version && jq --version && node -v"
 ```
 
 > **Thứ tự:** Phase 0.2 (provision) **trước** Phase B (rsync). Doc cũ đặt provision ở Phase C — vẫn chạy được nếu đã provision, nhưng server mới nên provision trước.
@@ -209,25 +206,27 @@ Chạy trong repo `blockchain-dock`, thư mục `blockchain-dockerize/docker-com
 ### A.1 + A.2 — Một lệnh (khuyến nghị)
 
 ```bash
-make prepare-new-validator-local \
-  SEED_SERVER="${SEED_SERVER}" \
-  REMOTE_DIR="${REMOTE_DIR}" \
-  NODE_ID="${NODE_ID}"
+make prepare-new-validator-local NODE_ID="${NODE_ID}"
 ```
 
-Bỏ `NODE_ID` để script tự chọn `validator-N` tiếp theo (`validator-2`, `validator-3`, …).
+`SEED_SERVER` lấy từ `envs/deploy.env`. Bỏ `NODE_ID` để script tự chọn `validator-N` tiếp theo (`validator-2`, `validator-3`, …).
 
-Tương đương:
+Nếu peer bundle **đã có trong local repo** (`genesis/reserved-peers.txt` + `genesis/spec.json`), lệnh trên **tự bỏ qua** `pull-peer-config`. Hoặc dùng `SKIP_PULL=1` rõ ràng:
+
+```bash
+make prepare-new-validator-local SKIP_PULL=1 NODE_ID="${NODE_ID}"
+make prepare-new-node TYPE=validator NODE_ID="${NODE_ID}"
+```
+
+Tương đương (khi cần pull từ seed):
 
 1. `make pull-peer-config` — kéo `genesis/spec.json`, `reserved-peers.txt`, `contract-addresses.json`, enode seed
 2. `make prepare-new-node TYPE=validator` — tạo keystore + `config.toml` + `reserved-peers.txt`
 
-### A.1 Kéo peer bundle từ seed (tách riêng)
+### A.1 Kéo peer bundle từ seed (chỉ khi thiếu hoặc enode đổi)
 
 ```bash
-make pull-peer-config \
-  SERVER="${SEED_SERVER}" \
-  REMOTE_DIR="${REMOTE_DIR}"
+make pull-peer-config
 ```
 
 Kéo về local:
@@ -266,10 +265,7 @@ cat "nodes/${NODE_ID}/address"
 ## Phase B — Sync bundle lên server remote
 
 ```bash
-make sync-new-validator \
-  SERVER="${REMOTE_SERVER}" \
-  NODE_ID="${NODE_ID}" \
-  REMOTE_DIR="${REMOTE_DIR}"
+make sync-new-validator SERVER=root@<IP_VALIDATOR_MOI> NODE_ID="${NODE_ID}"
 ```
 
 Script `sync-new-validator.sh` chỉ đẩy **bundle tối thiểu** (không DApps):
@@ -300,9 +296,12 @@ chain-dpos/
 
 ### Rsync thủ công (nếu không dùng make)
 
-Từ máy operator (đã clone full `blockchain-dock`):
+Từ máy operator (đã clone full `blockchain-dock`). Đặt biến shell cho host validator mới:
 
 ```bash
+REMOTE_SERVER=root@<IP_VALIDATOR_MOI>
+REMOTE_DIR=/opt/blockchain-gtbs   # khớp REMOTE_DEPLOY_DIR trong deploy.env
+
 cd blockchain-dockerize/docker-compose/chain-dpos
 
 CHAIN_ROOT="$(pwd)"
@@ -444,10 +443,7 @@ include:
 **Từ máy operator:**
 
 ```bash
-make ssh-new-validator-up \
-  SERVER="${REMOTE_SERVER}" \
-  NODE_ID="${NODE_ID}" \
-  REMOTE_DIR="${REMOTE_DIR}"
+make ssh-new-validator-up SERVER=root@<IP_VALIDATOR_MOI> NODE_ID="${NODE_ID}"
 ```
 
 ```bash
@@ -594,22 +590,22 @@ Xem thêm: [dpos-testnet.md](./dpos-testnet.md), [custom-staking-gtbs.md](./cust
 # Seed: refresh enode (nếu IP seed đổi)
 ./scripts/export-peer-config.sh
 
-# Operator: kéo lại bundle
-make pull-peer-config SERVER="${SEED_SERVER}" REMOTE_DIR="${REMOTE_DIR}"
+# Operator: kéo lại bundle (SEED_SERVER trong deploy.env)
+make pull-peer-config
 
 # Operator: start / logs trên server remote
-make ssh-new-validator-up SERVER=root@host NODE_ID=2 REMOTE_DIR=/opt/blockchain-gtbs
-make ssh-new-validator-logs SERVER=root@host NODE_ID=2 REMOTE_DIR=/opt/blockchain-gtbs
-make ssh-new-validator-down SERVER=root@host NODE_ID=2 REMOTE_DIR=/opt/blockchain-gtbs
+make ssh-new-validator-up SERVER=root@host NODE_ID=2
+make ssh-new-validator-logs SERVER=root@host NODE_ID=2
+make ssh-new-validator-down SERVER=root@host NODE_ID=2
 ```
 
 ---
 
 ## Checklist
 
-- [ ] **Phase 0** Operator: `make check-deps`, `deploy.env` khớp seed
+- [ ] **Phase 0** Operator: `deploy.env` có `SEED_SERVER`, `REMOTE_DEPLOY_DIR` khớp seed
 - [ ] **Phase 0** Server remote: `make setup-ssh` + `make provision-remote OPEN_P2P_PORT=1`
-- [ ] `make prepare-new-validator-local SEED_SERVER=...` → ghi `NODE_ID`
+- [ ] `make prepare-new-validator-local` → ghi `NODE_ID` (SEED_SERVER từ deploy.env)
 - [ ] `make sync-new-validator SERVER=... NODE_ID=...`
 - [ ] `make ssh-new-validator-up SERVER=... NODE_ID=...` (đảm bảo `P2P_PUBLIC_IP` trong `deploy.env` trên server)
 - [ ] Block sync gần bằng seed

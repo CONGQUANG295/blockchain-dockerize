@@ -12,6 +12,7 @@ Hướng dẫn tổng quan triển khai blockchain **DPoS** (Delegated Proof of 
 |----------|--------|
 | **[dpos-testnet.md](./dpos-testnet.md)** | **Runbook deploy chain mới — Phase A→F** |
 | **[remote-deploy.md](./remote-deploy.md)** | **Deploy lên server qua Docker Hub (prepare local, sync bundle)** |
+| **[deploy-explorer-server-3.md](./deploy-explorer-server-3.md)** | **Deploy Explorer (Blockscout v11) lên server 3 — tách khỏi validator và netstats dashboard** |
 | **[validator-1-custom-contracts.md](./validator-1-custom-contracts.md)** | **Validator-1 với custom contracts GTBS** |
 | [custom-staking-gtbs.md](./custom-staking-gtbs.md) | Chi tiết contract GTBS, owner config, staking-keeper |
 | [POA](./poa.md) | Triển khai PoA (Geth + bootnode) |

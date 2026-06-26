@@ -43,6 +43,9 @@ fi
 
 migrate_file "${LEGACY_CONFIG}/validator-1.toml" "${PATH_VALIDATOR_CONFIG}"
 migrate_file "${LEGACY_CONFIG}/rpc.toml" "${PATH_RPC_CONFIG}"
+if [ -f "${PATH_RPC_CONFIG}" ]; then
+  sed -i '/^apis = /s/"trace"/"traces"/g' "${PATH_RPC_CONFIG}"
+fi
 migrate_file "${LEGACY_CONFIG}/reserved-peers.txt" "${PATH_RESERVED_PEERS}"
 
 if [ -d "${LEGACY_DATA}" ]; then

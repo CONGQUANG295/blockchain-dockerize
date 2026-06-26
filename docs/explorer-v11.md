@@ -58,10 +58,36 @@ The archive **rpc-node** (not validator-1) serves JSON-RPC to Blockscout:
 
 | Env var | Value |
 |---------|-------|
-| `ETHEREUM_JSONRPC_VARIANT` | `nethermind` (OE compatibility mode) |
-| `BLOCK_TRANSFORMER` | `clique` |
+| `ETHEREUM_JSONRPC_VARIANT` | `nethermind` (OpenEthereum compatibility mode for Blockscout v11) |
+| `BLOCK_TRANSFORMER` | `base` (AuthorityRound — **not** `clique`) |
 | `ETHEREUM_JSONRPC_HTTP_URL` | `http://rpc.host:8545/` |
 | `ETHEREUM_JSONRPC_WS_URL` | `ws://rpc.host:8546/` |
+
+## Custom address prefix (bech32 UI)
+
+Explorer can show addresses with a custom human-readable prefix while the chain stores standard `0x` addresses.
+
+| `deploy.env` | Rendered frontend env |
+|--------------|----------------------|
+| `ADDRESS_DISPLAY_PREFIX=custom1` | `NEXT_PUBLIC_VIEWS_ADDRESS_BECH_32_PREFIX=custom1` |
+| `ADDRESS_DISPLAY_DEFAULT=bech32` | `NEXT_PUBLIC_VIEWS_ADDRESS_FORMAT=['bech32','base16']` (bech32 first) |
+| `ADDRESS_FORMAT_TOGGLE=true` | Settings toggle + alternate format on address page |
+| *(empty prefix)* | Vars omitted — standard `0x` display |
+
+**Format:** BIP-173 bech32 — e.g. `custom1qxy2kgdyjrs5qv…`, not `custom1` + the same 40 hex digits as `0x`.
+
+**End users:**
+- Wallets (MetaMask, etc.) and RPC tools require the **`0x`** address.
+- Toggle format: explorer **Settings** → “Show custom1 format”.
+- On an address page, the alternate format row shows the other encoding.
+
+**Operator:** Set vars in `deploy.env`, run `./scripts/render-envs.sh`, restart frontend:
+
+```bash
+docker compose -f compose-dapps-traefik-v11.yml restart frontend
+```
+
+No frontend image rebuild needed for env-only prefix changes — env is applied at container start via `env_file` and `make_envs_script.sh`. Rebuild the frontend image when applying the `SettingsContext` default-format patch (see `blockscout-frontend-2.8.1`).
 
 ## Compose stack
 

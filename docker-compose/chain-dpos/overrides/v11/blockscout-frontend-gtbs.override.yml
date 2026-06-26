@@ -6,4 +6,6 @@
 services:
   frontend:
     volumes:
+      # file:///assets/configs/* (download_assets at startup) + static /assets/configs/* in browser
+      - ../../assets/explorer/gtbs:/assets/configs:ro
       - ../../assets/explorer/gtbs:/app/public/assets/configs:ro

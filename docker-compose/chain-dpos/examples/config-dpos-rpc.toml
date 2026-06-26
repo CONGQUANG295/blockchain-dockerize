@@ -14,7 +14,7 @@ reserved_peers = "./reserved-peers.txt"
 cors = ["all"]
 hosts = ["all"]
 port = 8545
-apis = ["eth", "net", "parity", "web3", "trace"]
+apis = ["eth", "net", "parity", "web3", "traces"]
 
 [websockets]
 disable = false

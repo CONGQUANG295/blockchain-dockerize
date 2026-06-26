@@ -10,11 +10,35 @@ COMPOSE := docker compose
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 SCRIPTS := $(ROOT)/scripts
 
-SERVER ?=
-_REMOTE_FROM_DEPLOY_ENV := $(shell \
-	grep -E '^[[:space:]]*REMOTE_DEPLOY_DIR=' '$(ROOT)/envs/deploy.env' 2>/dev/null | \
+# Read VAR=value from envs/deploy.env (last match wins; strips quotes)
+_deploy_env_get = $(shell \
+	grep -E '^[[:space:]]*$(1)=' '$(ROOT)/envs/deploy.env' 2>/dev/null | \
 	tail -1 | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$$//;s/^"//;s/"$$//;s/^'\''//;s/'\''$$//')
-REMOTE_DIR ?= $(if $(_REMOTE_FROM_DEPLOY_ENV),$(_REMOTE_FROM_DEPLOY_ENV),/opt/blockchain-dock)
+
+EXPLORER_SERVER ?= $(call _deploy_env_get,EXPLORER_SERVER)
+SEED_SERVER ?= $(call _deploy_env_get,SEED_SERVER)
+DAPPS_SERVER ?= $(call _deploy_env_get,DAPPS_SERVER)
+SERVER ?=
+EXPLORER ?= 0
+SEED ?= 0
+DAPPS ?= 0
+
+# Generic SSH: SERVER (CLI) > EXPLORER=1 | SEED=1 | DAPPS=1 → host trong deploy.env
+_ssh_from_flags = $(or \
+	$(if $(filter 1 true,$(EXPLORER)),$(EXPLORER_SERVER)), \
+	$(if $(filter 1 true,$(SEED)),$(SEED_SERVER)), \
+	$(if $(filter 1 true,$(DAPPS)),$(DAPPS_SERVER)))
+SSH_TARGET := $(or $(SERVER),$(_ssh_from_flags))
+
+# Target theo vai trò (không cần cờ — tên target đã rõ server)
+EXPLORER_TARGET := $(or $(SERVER),$(EXPLORER_SERVER))
+SEED_TARGET := $(or $(SERVER),$(SEED_SERVER))
+DAPPS_TARGET := $(or $(SERVER),$(DAPPS_SERVER))
+
+REMOTE_DIR ?= $(or $(call _deploy_env_get,REMOTE_DEPLOY_DIR),/opt/blockchain-dock)
+
+# Thông báo lỗi chung cho lệnh đa server
+_ssh_usage_hint = SERVER=user@host | EXPLORER=1 | SEED=1 | DAPPS=1 (set *_SERVER in envs/deploy.env)
 DOCKERHUB_NAMESPACE ?=
 
 WITH_TRAEFIK ?= 0

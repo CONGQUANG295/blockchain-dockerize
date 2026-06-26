@@ -3,5 +3,7 @@ services:
     volumes:
       - ../data/dpos-blockscout-db:/var/lib/postgresql/data
   db:
+    env_file:
+      - ../../chain-dpos/envs/db.env
     volumes:
       - ../data/dpos-blockscout-db:/var/lib/postgresql/data

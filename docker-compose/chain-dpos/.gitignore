@@ -20,6 +20,7 @@ config/reserved-peers.txt
 envs/deploy.env
 genesis/faucet-wallet.export
 traefik/dynamic/blockscout-v11.yml
+traefik/dynamic/middlewares.yml
 
 data/*
 !data/.gitkeep

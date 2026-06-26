@@ -3,8 +3,8 @@ services:
     volumes:
       - ../data/dpos-stats-db:/var/lib/postgresql/data
   stats-db:
-    environment:
-      POSTGRES_PASSWORD: ${STATS_DB_PASSWORD:-changeme}
+    env_file:
+      - ../../chain-dpos/envs/blockscout-stats.env
     volumes:
       - ../data/dpos-stats-db:/var/lib/postgresql/data
   stats:

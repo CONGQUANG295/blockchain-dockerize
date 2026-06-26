@@ -70,3 +70,12 @@ remote_wait_for_rpc() {
   source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/wait-for-rpc.sh"
   wait_for_rpc "$@"
 }
+
+# db/stats-db run as UID 2000; bind-mount data may be root-owned after a bad first boot.
+# `docker compose up` skips one-shot init containers that already exited — run explicitly.
+remote_ensure_postgres_data_permissions() {
+  local -a compose_args=("$@")
+  echo "=== Ensure Postgres data dir ownership (UID 2000) ==="
+  docker compose "${compose_args[@]}" run --rm --no-deps db-init
+  docker compose "${compose_args[@]}" run --rm --no-deps stats-db-init
+}

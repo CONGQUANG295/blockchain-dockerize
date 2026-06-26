@@ -1,6 +1,6 @@
 services:
   docs-static:
-    volumes:
+    volumes: !override
       - ../../data/proxy/docs:/usr/share/nginx/html:ro
     labels:
       - traefik.enable=true

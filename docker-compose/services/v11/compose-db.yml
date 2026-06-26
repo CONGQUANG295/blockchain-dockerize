@@ -3,11 +3,8 @@ services:
     image: postgres:17
     volumes:
       - blockscout-db-data:/var/lib/postgresql/data
-    entrypoint:
-      - sh
-      - -c
-      - |
-        chown -R 2000:2000 /var/lib/postgresql/data
+      - ./postgres-data-init.sh:/postgres-data-init.sh:ro
+    entrypoint: ["/bin/sh", "/postgres-data-init.sh"]
 
   db:
     image: postgres:17
@@ -19,7 +16,6 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-blockscout}
       POSTGRES_USER: blockscout
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - blockscout-db-data:/var/lib/postgresql/data
     healthcheck:

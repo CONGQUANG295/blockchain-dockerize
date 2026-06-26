@@ -4,13 +4,13 @@ include make/include.mk
 .PHONY: health verify enode patch-spec validator-restart
 .PHONY: validator-up validator-down validator-logs stop-validator-nodes
 .PHONY: dapps-up dapps-down dapps-logs
-.PHONY: prepare-remote sync provision-remote setup-ssh install-make-remote deploy-remote-validator deploy-remote-dapps
-.PHONY: export-peer-config prepare-new-node pull-peer-config
+.PHONY: prepare-remote sync provision-remote setup-ssh install-make-remote deploy-remote-validator deploy-remote-dapps deploy-remote-explorer
+.PHONY: export-peer-config prepare-new-node pull-peer-config sync-peer-bundle
 .PHONY: prepare-new-validator-local sync-new-validator
 .PHONY: ssh-new-validator-prepare ssh-new-validator-up ssh-new-validator-down ssh-new-validator-logs
 .PHONY: validator-2-prepare-local sync-validator-2 prepare-validator-2 pull-validator-1-enode
 .PHONY: open-p2p-port ssh-open-p2p-port
-.PHONY: ssh-deploy-validator ssh-stop-validator-nodes ssh-install-make ssh-deploy-dapps gtbs-prepare
+.PHONY: ssh-deploy-validator ssh-stop-validator-nodes ssh-install-make ssh-deploy-dapps ssh-deploy-explorer gtbs-prepare
 
 init: ## Copy env mẫu (deploy.env, dpos.chain.env, dpos.contract.env)
 	cp -n envs/deploy.env.example envs/deploy.env || true
@@ -58,15 +58,27 @@ prepare-new-node: check-deps ## Chuẩn bị RPC hoặc validator mới (tự t�
 		$(if $(NODE_ID),--node-id "$(NODE_ID)",) \
 		$(if $(filter 1,$(FORCE_KEYS)),--force-keys,)
 
-pull-peer-config: ## Local: kéo peer bundle từ seed validator server
-	@test -n "$(SERVER)" || (echo "Usage: make pull-peer-config SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/pull-peer-config.sh "$(SERVER)" "$(REMOTE_DIR)" \
+pull-peer-config: ## Local: kéo peer bundle từ seed validator server (một lần sau seed deploy)
+	@test -n "$(SEED_TARGET)" || (echo "Usage: make pull-peer-config [SERVER=user@host] — or set SEED_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/pull-peer-config.sh "$(SEED_TARGET)" "$(REMOTE_DIR)" \
 		$(if $(filter 1,$(SKIP_REFRESH)),--skip-refresh,)
 
-prepare-new-validator-local: check-deps ## Local: pull bundle từ seed + tạo node validator mới
-	@test -n "$(SEED_SERVER)" || (echo "Usage: make prepare-new-validator-local SEED_SERVER=user@seed [REMOTE_DIR=...] [NODE_ID=validator-N]" && exit 1)
-	$(MAKE) pull-peer-config SERVER="$(SEED_SERVER)" REMOTE_DIR="$(REMOTE_DIR)" \
-		$(if $(filter 1,$(SKIP_REFRESH)),SKIP_REFRESH=1,)
+sync-peer-bundle: ## Local: đẩy peer bundle lên server non-seed (EXPLORER=1 hoặc SERVER=)
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make sync-peer-bundle $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/sync-peer-bundle.sh "$(SSH_TARGET)" "$(REMOTE_DIR)" \
+		$(if $(filter 1,$(DRY_RUN)),--dry-run,)
+
+prepare-new-validator-local: check-deps ## Local: tạo node validator mới (pull bundle nếu thiếu)
+	@if [ "$(SKIP_PULL)" = "1" ]; then \
+	  echo "SKIP_PULL=1 — using local peer bundle"; \
+	elif [ -f genesis/reserved-peers.txt ] && [ -f genesis/spec.json ]; then \
+	  echo "Local peer bundle found — skipping pull-peer-config"; \
+	else \
+	  test -n "$(SEED_SERVER)" || (echo "Usage: make prepare-new-validator-local [SEED_SERVER=user@seed] — or set SEED_SERVER in envs/deploy.env [NODE_ID=validator-N]" && exit 1); \
+	  echo "Pulling peer bundle from $(SEED_SERVER)..."; \
+	  $(MAKE) pull-peer-config SERVER="$(SEED_SERVER)" REMOTE_DIR="$(REMOTE_DIR)" \
+	    $(if $(filter 1,$(SKIP_REFRESH)),SKIP_REFRESH=1,); \
+	fi
 	$(MAKE) prepare-new-node TYPE=validator $(if $(NODE_ID),NODE_ID="$(NODE_ID)",)
 
 sync-new-validator: ## Local: rsync genesis + node validator mới lên server remote
@@ -157,13 +169,13 @@ dapps-logs: ## Follow DApps logs
 prepare-remote: check-deps ## Local: prepare-deploy.sh
 	$(SCRIPTS)/local/prepare-deploy.sh $(if $(filter 1,$(WITH_TRAEFIK)),--with-traefik,)
 
-sync: ## Local: rsync bundle lên server (SERVER bắt buộc)
-	@test -n "$(SERVER)" || (echo "Usage: make sync SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/sync-to-server.sh "$(SERVER)" "$(REMOTE_DIR)"
+sync: ## Local: rsync bundle lên server (EXPLORER=1 | SEED=1 | DAPPS=1 | SERVER=)
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make sync $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/sync-to-server.sh "$(SSH_TARGET)" "$(REMOTE_DIR)"
 
 provision-remote: ## Local: provision Docker trên server
-	@test -n "$(SERVER)" || (echo "Usage: make provision-remote SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/provision-remote.sh "$(SERVER)" \
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make provision-remote $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/provision-remote.sh "$(SSH_TARGET)" \
 		$(if $(filter-out /opt/blockchain-dock,$(REMOTE_DIR)),--remote-dir "$(REMOTE_DIR)",) \
 		$(if $(filter 1 true,$(OPEN_P2P_PORT)),--open-p2p-port,)
 
@@ -171,21 +183,21 @@ open-p2p-port: ## Server: mở P2P port qua ufw (OPEN_P2P_PORT=1)
 	sudo OPEN_P2P_PORT=1 P2P_PORT=$(or $(P2P_PORT),30300) $(SCRIPTS)/remote/open-p2p-port.sh
 
 ssh-open-p2p-port: ## SSH: mở P2P port trên server đích
-	@test -n "$(SERVER)" || (echo "Usage: make ssh-open-p2p-port SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/ssh-run-remote.sh "$(SERVER)" "$(REMOTE_DIR)" \
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make ssh-open-p2p-port $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(SSH_TARGET)" "$(REMOTE_DIR)" \
 		sudo OPEN_P2P_PORT=1 P2P_PORT=$(or $(P2P_PORT),30300) ./scripts/remote/open-p2p-port.sh
 
 setup-ssh: ## Local: ssh-copy-id lên server (một lần, không hỏi password sau)
-	@test -n "$(SERVER)" || (echo "Usage: make setup-ssh SERVER=user@host" && exit 1)
-	$(SCRIPTS)/local/setup-ssh.sh "$(SERVER)"
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make setup-ssh $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/setup-ssh.sh "$(SSH_TARGET)"
 
 install-make-remote: ## Local: cài GNU make trên server (gọi install-make-remote.sh)
-	@test -n "$(SERVER)" || (echo "Usage: make install-make-remote SERVER=user@host" && exit 1)
-	$(SCRIPTS)/local/install-make-remote.sh "$(SERVER)"
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make install-make-remote $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/install-make-remote.sh "$(SSH_TARGET)"
 
 ssh-install-make: ## SSH: cài GNU make trên server đích (alias install-make-remote)
-	@test -n "$(SERVER)" || (echo "Usage: make ssh-install-make SERVER=user@host" && exit 1)
-	$(SCRIPTS)/local/install-make-remote.sh "$(SERVER)"
+	@test -n "$(SSH_TARGET)" || (echo "Usage: make ssh-install-make $(_ssh_usage_hint)" && exit 1)
+	$(SCRIPTS)/local/install-make-remote.sh "$(SSH_TARGET)"
 
 deploy-remote-validator: ## Server: deploy-validator.sh
 	$(SCRIPTS)/remote/deploy-validator.sh $(if $(filter 1,$(WITH_TRAEFIK)),--with-traefik,)
@@ -193,30 +205,38 @@ deploy-remote-validator: ## Server: deploy-validator.sh
 deploy-remote-stop-validator: ## Server: stop-validator-nodes.sh
 	$(SCRIPTS)/stop-validator-nodes.sh --force
 
-deploy-remote-dapps: ## Server: deploy-dapps.sh
+deploy-remote-dapps: ## Server: deploy-dapps.sh (RPC + netstats + docs + Traefik; no Blockscout)
 	$(SCRIPTS)/remote/deploy-dapps.sh
 
+deploy-remote-explorer: ## Server: deploy-explorer.sh (Blockscout only, no netstats-dashboard)
+	$(SCRIPTS)/remote/deploy-explorer.sh
+
 ssh-deploy-validator: ## Chạy deploy-validator trên server qua SSH
-	@test -n "$(SERVER)" || (echo "Usage: make ssh-deploy-validator SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	@$(SCRIPTS)/local/ssh-run-remote.sh "$(SERVER)" "$(REMOTE_DIR)" \
+	@test -n "$(SEED_TARGET)" || (echo "Usage: make ssh-deploy-validator [SERVER=user@host] — or set SEED_SERVER in envs/deploy.env" && exit 1)
+	@$(SCRIPTS)/local/ssh-run-remote.sh "$(SEED_TARGET)" "$(REMOTE_DIR)" \
 		./scripts/remote/deploy-validator.sh $(if $(filter 1,$(WITH_TRAEFIK)),--with-traefik,) \
 	|| { \
 		echo ""; \
 		echo "=== Deploy failed — stop validator nodes trên server rồi fix & chạy lại ==="; \
-		echo "  make ssh-stop-validator-nodes SERVER=$(SERVER) REMOTE_DIR=$(if $(REMOTE_DIR),$(REMOTE_DIR),/opt/blockchain-dock)"; \
-		echo "  make ssh-deploy-validator SERVER=$(SERVER) REMOTE_DIR=$(if $(REMOTE_DIR),$(REMOTE_DIR),/opt/blockchain-dock)"; \
+		echo "  make ssh-stop-validator-nodes SERVER=$(SEED_TARGET) REMOTE_DIR=$(if $(REMOTE_DIR),$(REMOTE_DIR),/opt/blockchain-dock)"; \
+		echo "  make ssh-deploy-validator SERVER=$(SEED_TARGET) REMOTE_DIR=$(if $(REMOTE_DIR),$(REMOTE_DIR),/opt/blockchain-dock)"; \
 		exit 1; \
 	}
 
 ssh-stop-validator-nodes: ## SSH: dừng validator stack + deployer (giữ chain data)
-	@test -n "$(SERVER)" || (echo "Usage: make ssh-stop-validator-nodes SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/ssh-run-remote.sh "$(SERVER)" "$(REMOTE_DIR)" \
+	@test -n "$(SEED_TARGET)" || (echo "Usage: make ssh-stop-validator-nodes [SERVER=user@host] — or set SEED_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(SEED_TARGET)" "$(REMOTE_DIR)" \
 		./scripts/stop-validator-nodes.sh --force
 
-ssh-deploy-dapps: ## Chạy deploy-dapps trên server qua SSH
-	@test -n "$(SERVER)" || (echo "Usage: make ssh-deploy-dapps SERVER=user@host [REMOTE_DIR=...]" && exit 1)
-	$(SCRIPTS)/local/ssh-run-remote.sh "$(SERVER)" "$(REMOTE_DIR)" \
+ssh-deploy-dapps: ## SSH: deploy-dapps trên DAPPS_SERVER (RPC + DApps; không Blockscout)
+	@test -n "$(DAPPS_TARGET)" || (echo "Usage: make ssh-deploy-dapps [SERVER=user@host] — or set DAPPS_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(DAPPS_TARGET)" "$(REMOTE_DIR)" \
 		./scripts/remote/deploy-dapps.sh
+
+ssh-deploy-explorer: ## Chạy deploy-explorer trên server qua SSH (EXPLORER_SERVER default)
+	@test -n "$(EXPLORER_TARGET)" || (echo "Usage: make ssh-deploy-explorer [SERVER=user@host] — or set EXPLORER_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(EXPLORER_TARGET)" "$(REMOTE_DIR)" \
+		./scripts/remote/deploy-explorer.sh
 
 gtbs-prepare: ## Chuẩn bị deploy GTBS (ENABLE_CUSTOM_STAKING=true trong deploy.env)
 	@grep -q 'ENABLE_CUSTOM_STAKING=true' envs/deploy.env || \

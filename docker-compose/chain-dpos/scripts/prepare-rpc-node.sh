@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT_DIR}/scripts/lib/paths.sh"
 # shellcheck source=lib/peer-config.sh
 source "${ROOT_DIR}/scripts/lib/peer-config.sh"
-chain_dpos_paths "${ROOT_DIR}"
+peer_config_paths "${ROOT_DIR}"
 peer_config_ensure_dirs
 
 if [ ! -f "${PATH_GENESIS_RESERVED_PEERS}" ]; then

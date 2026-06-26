@@ -290,6 +290,11 @@ jq . genesis/contract-addresses.json
 cat genesis/validator-1.enode
 # hoặc: make enode
 
+# Capture peer bundle về máy operator (một lần, sau deploy thành công)
+# make pull-peer-config SERVER=ubuntu@<server-1> REMOTE_DIR=/opt/blockchain-dock
+# → commit genesis/reserved-peers.txt, genesis/peers/, genesis/validator-1.enode
+# Chi tiết: remote-deploy.md § Capture peer bundle
+
 # Verify transition (nếu cần chạy lại thủ công)
 make verify
 ```
