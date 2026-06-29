@@ -186,7 +186,8 @@ run_rsync "${COMPOSE_ENVS_DIR}/" "${REMOTE}:${REMOTE_COMPOSE_ENVS}/" --exclude '
 run_rsync "${ROOT_DIR}/" "${REMOTE}:${REMOTE_CHAIN}/" "${CHAIN_EXCLUDES[@]}"
 
 if [ "${DRY_RUN}" = false ]; then
-  ssh_cmd "${REMOTE}" "chmod +x '${REMOTE_CHAIN}/scripts/remote/'*.sh '${REMOTE_CHAIN}/scripts/'*.sh 2>/dev/null || true"
+  ssh_cmd "${REMOTE}" "chmod +x '${REMOTE_CHAIN}/scripts/remote/'*.sh '${REMOTE_CHAIN}/scripts/'*.sh '${REMOTE_CHAIN}/scripts/ensure-genesis-spec.sh' 2>/dev/null || true"
+  ssh_cmd "${REMOTE}" "'${REMOTE_CHAIN}/scripts/ensure-genesis-spec.sh'"
 fi
 
 echo ""

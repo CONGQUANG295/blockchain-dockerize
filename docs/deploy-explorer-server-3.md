@@ -92,7 +92,7 @@ make provision-remote EXPLORER=1
 make prepare-new-node TYPE=rpc
 
 # Phase B — render env + genesis (cần WITH_TRAEFIK=1)
-make prepare-remote WITH_TRAEFIK=1
+make render WITH_TRAEFIK=1
 
 # Phase C — sync bundle + peer artifacts lên server 3
 make sync EXPLORER=1
@@ -102,6 +102,8 @@ make sync-peer-bundle EXPLORER=1
 make ssh-open-p2p-port EXPLORER=1
 make ssh-deploy-explorer
 ```
+
+> **Không chạy `make prepare-remote`** khi chỉ deploy/redeploy explorer — target đó chạy `prepare-genesis.sh` và có thể **ghi đè** `genesis/spec.json` local. Dùng `make render WITH_TRAEFIK=1` + `make sync EXPLORER=1` thay thế.
 
 > `deploy-dapps.sh` / `make ssh-deploy-dapps` chỉ khởi động DApps (`netstats-dashboard`, docs, faucet) — **không** gồm Blockscout/RPC. **Không dùng** trên server 3 (explorer).
 
@@ -116,15 +118,15 @@ make ssh-deploy-explorer
 
 [Máy operator local]
   genesis/ peer bundle đã có trong repo
-  → deploy.env: SEED_SERVER, EXPLORER_SERVER, REMOTE_DEPLOY_DIR, domain explorer
-  → prepare-new-node TYPE=rpc
-  → prepare-remote WITH_TRAEFIK=1
+  → deploy.env: SEED_SERVER, EXPLORER_SERVER, secrets, domain explorer
+  → prepare-new-node TYPE=rpc (lần đầu)
+  → make render WITH_TRAEFIK=1
   → sync EXPLORER=1 + sync-peer-bundle EXPLORER=1
 
 [Server 3 — explorer only]
   DNS → IP server 3 (explorer, stats, visualize, RPC)
   mở P2P 30300 (RPC node sync chain)
-  deploy-explorer.sh
+  deploy-explorer.sh (tự chown Postgres + GTBS override nếu bật)
   → rpc-node sync từ validator qua reserved-peers
   → Blockscout index blocks
 
@@ -228,29 +230,49 @@ DOCS_SERVER_NAME=docs.gtbsblockchain.com
 FAUCET_SERVER_NAME=faucet.gtbsblockchain.com
 ```
 
-### Explorer branding (tuỳ chọn)
+### Secrets (Postgres + Blockscout) — bắt buộc trước deploy đầu tiên
+
+Ghi **cố định** vào `deploy.env` (tránh password drift khi redeploy):
+
+```env
+POSTGRES_PASSWORD=<openssl rand -hex 32>
+STATS_DB_PASSWORD=<openssl rand -hex 32>
+SECRET_KEY_BASE=<openssl rand -hex 64>
+POSTGRES_DB=blockscout
+```
+
+| Biến | Dùng cho |
+|------|----------|
+| `POSTGRES_PASSWORD` | Blockscout DB (`db`) |
+| `STATS_DB_PASSWORD` | Stats DB (`stats-db`) |
+| `SECRET_KEY_BASE` | Blockscout backend |
+
+> `WS_SECRET` chỉ cần cho **netstats dashboard** trên server DApps — **không** dùng trên explorer-only server.
+
+### Explorer branding (GTBS — khuyến nghị)
 
 ```env
 EXPLORER_CUSTOM_PROFILE=gtbs
 EXPLORER_HERO_TITLE="GTBS Blockchain Explorer"
+EXPLORER_ASSETS_BASE_URL=https://raw.githubusercontent.com/gtbschain/assets/master/explorer
 COIN_NAME=GTBS
 COIN_SYMBOL=GTBS
-NEXT_PUBLIC_IS_TESTNET=false
 ```
 
-Xem [explorer-custom-theme.md](./explorer-custom-theme.md).
+Logo/icon tải từ GitHub khi frontend start — server cần outbound `raw.githubusercontent.com`.  
+`make ssh-deploy-explorer` tự merge GTBS env + compose override. Chi tiết: [explorer-custom-theme.md](./explorer-custom-theme.md).
 
 ### Render env
 
 ```bash
-make prepare-remote WITH_TRAEFIK=1
+make render WITH_TRAEFIK=1
 ```
 
-Sinh `envs/*.env`, `images.env`, cấu hình Traefik, Blockscout backend/frontend.
+Sinh `envs/*.env`, `images.env`, Traefik, Blockscout backend/frontend.
 
-**GTBS widgets:** sau khi có `genesis/contract-addresses.json`, đặt `NEXT_PUBLIC_CONSENSUS_ADDRESS` trong `envs/blockscout-frontend.env` (hoặc bật profile `gtbs`).
+**GTBS widgets:** `NEXT_PUBLIC_CONSENSUS_ADDRESS` / `NEXT_PUBLIC_STAKING_VAULT_ADDRESS` tự inject từ `genesis/contract-addresses.json` khi `EXPLORER_CUSTOM_PROFILE=gtbs`.
 
-> `WS_SECRET` trong `deploy.env` chỉ cần cho **netstats dashboard** trên server DApps — phải **khớp server 1** (`netstats-api`). Server 3 (explorer) không dùng biến này.
+> **Không** dùng `make prepare-remote` cho luồng explorer-only — target đó chạy `prepare-genesis.sh` và có thể ghi đè genesis local. Chỉ dùng khi bootstrap chain GTBS mới từ đầu.
 
 ---
 
@@ -329,12 +351,27 @@ make ssh-open-p2p-port EXPLORER=1
 make ssh-deploy-explorer
 ```
 
-Script sẽ:
+Script `deploy-explorer.sh` sẽ:
 
 1. `render-envs.sh --with-traefik`
 2. `prepare-rpc-node.sh` + `prepare-envs-dapps.sh`
-3. `docker compose up` **chỉ** services explorer (xem danh sách bên dưới)
-4. `health-check.sh`
+3. Chạy `db-init` + `stats-db-init` và **chown** Postgres data dirs (`UID 2000`)
+4. `docker compose up` services explorer (tự thêm GTBS override nếu `EXPLORER_CUSTOM_PROFILE=gtbs`)
+5. `health-check.sh`
+
+### Redeploy sạch (wipe data + deploy lại)
+
+Khi cần xóa Blockscout DB + RPC chain data trên server explorer (giữ genesis):
+
+```bash
+# Từ máy operator
+make ssh-clean-explorer EXPLORER=1
+make sync EXPLORER=1
+make sync-peer-bundle EXPLORER=1
+make ssh-deploy-explorer
+```
+
+Hoặc SSH thủ công: `./scripts/remote/clean-explorer.sh --force` rồi `./scripts/remote/deploy-explorer.sh`.
 
 ### Cách B — SSH thủ công
 
@@ -346,16 +383,7 @@ cd /opt/blockchain-gtbs/blockchain-dockerize/docker-compose/chain-dpos
 ./scripts/render-envs.sh envs/deploy.env --with-traefik
 ./scripts/prepare-rpc-node.sh
 WITH_TRAEFIK_PREPARE=true ./scripts/prepare-envs-dapps.sh
-
-docker compose -f compose-dapps-traefik-v11.yml pull \
-  traefik openethereum db-init db redis-db backend frontend \
-  stats-db-init stats-db stats visualizer
-
-docker compose -f compose-dapps-traefik-v11.yml up -d \
-  traefik openethereum db-init db redis-db backend frontend \
-  stats-db-init stats-db stats visualizer
-
-./scripts/health-check.sh
+./scripts/remote/deploy-explorer.sh
 ```
 
 **Services trên server 3:**
@@ -371,20 +399,38 @@ docker compose -f compose-dapps-traefik-v11.yml up -d \
 
 **Không start trên server 3:** `netstats-dashboard`, `docs-static`, `eth-faucet`.
 
-### GTBS theme override (tuỳ chọn)
+### GTBS profile
 
-```bash
-docker compose -f compose-dapps-traefik-v11.yml \
-  -f overrides/v11/blockscout-frontend-gtbs.override.yml up -d \
-  traefik openethereum db-init db redis-db backend frontend \
-  stats-db-init stats-db stats visualizer
-```
+Tự động khi `EXPLORER_CUSTOM_PROFILE=gtbs` trong `deploy.env` — **không** cần thêm cờ compose thủ công. `deploy-explorer.sh` thêm `overrides/v11/blockscout-frontend-gtbs.override.yml` (`SKIP_ENVS_VALIDATION` cho custom env vars).
 
 ---
 
 ## Phase F — Deploy DApps (netstats dashboard + …) trên Server DApps
 
 `netstats-dashboard` deploy **cùng** các DApps khác trên server riêng — **không** phải server 3.
+
+Stack trên server DApps: **RPC archive** (`openethereum`), Traefik, `netstats-dashboard`, `docs-static` (+ `eth-faucet` nếu testnet). **Không** gồm Blockscout (chạy trên server 3).
+
+### Peer bundle — bắt buộc trước deploy
+
+RPC node trên server DApps sync chain qua `genesis/reserved-peers.txt`. File này **phải khớp** enode validator đang chạy (seed + validator bổ sung nếu có).
+
+Kiểm tra local (ví dụ GTBS):
+
+```bash
+cat genesis/reserved-peers.txt
+# enode://...@91.229.245.75:30300   ← seed validator
+# enode://...@185.202.236.10:30300  ← validator bổ sung (nếu có)
+```
+
+Nếu thiếu hoặc enode cũ (sau redeploy seed / đổi keystore):
+
+```bash
+make pull-peer-config          # kéo từ SEED_SERVER
+make prepare-new-node TYPE=rpc # copy reserved-peers → nodes/rpc/
+```
+
+> `make sync DAPPS=1` **không** đẩy `genesis/reserved-peers.txt` (tránh ghi đè seed). Sau `sync` bắt buộc `make sync-peer-bundle DAPPS=1`.
 
 ### WS_SECRET — bắt buộc khớp Server 1
 
@@ -397,22 +443,59 @@ ssh "$(grep '^SEED_SERVER=' envs/deploy.env | cut -d= -f2-)" \
 
 Gán vào `envs/deploy.env` local trước khi sync lên server DApps.
 
-### Deploy
+### Deploy lần đầu (từ máy operator — chỉ `make`, không SSH thủ công)
 
 ```bash
+cd blockchain-dockerize/docker-compose/chain-dpos
+
+# 0. Peer bundle + RPC config local
+make pull-peer-config          # nếu genesis/reserved-peers.txt thiếu hoặc cũ
+make prepare-new-node TYPE=rpc
+make render WITH_TRAEFIK=1
+
+# 1. Sync bundle (compose, env, scripts)
 make sync DAPPS=1
+
+# 2. Đẩy peer bundle lên server DApps
+make sync-peer-bundle DAPPS=1
+
+# 3. Deploy
+make ssh-open-p2p-port DAPPS=1   # một lần — mở P2P 30300
 make ssh-deploy-dapps
 ```
 
-Hoặc trên server DApps, up có chọn lọc (không gồm Blockscout nếu explorer đã ở server 3):
+### Redeploy sạch (xóa RPC data + images cũ)
 
 ```bash
-docker compose -f compose-dapps-traefik-v11.yml up -d \
-  traefik netstats-dashboard docs-static
-# thêm --profile faucet nếu testnet
+make sync DAPPS=1
+make ssh-clean-dapps PRUNE_IMAGES=1
+make sync-peer-bundle DAPPS=1
+make prepare-new-node TYPE=rpc
+make sync DAPPS=1
+make ssh-deploy-dapps SKIP_HEALTH=1   # archive sync > 180s; health-check sau
+```
+
+Health-check sau khi RPC đã peer (2+ peers trong logs):
+
+```bash
+# Từ local, qua SSH (timeout dài hơn mặc định 180s):
+./scripts/local/ssh-run-remote.sh "$(grep '^DAPPS_SERVER=' envs/deploy.env | cut -d= -f2-)" \
+  "$(grep '^REMOTE_DEPLOY_DIR=' envs/deploy.env | cut -d= -f2-)" \
+  env HEALTH_CHECK_TIMEOUT=900 ./scripts/health-check.sh
 ```
 
 Chi tiết đầy đủ: [remote-deploy.md](./remote-deploy.md), [netstats.md](./netstats.md).
+
+### Troubleshooting DApps server
+
+| Triệu chứng | Nguyên nhân | Cách xử lý |
+|-------------|-------------|------------|
+| `RPC node did not sync in time` (health-check) | Archive sync từ block 0 > 180s | `make ssh-deploy-dapps SKIP_HEALTH=1`, chờ sync, chạy health-check với `HEALTH_CHECK_TIMEOUT=900` |
+| RPC `0/25 peers`, chain 1 KiB | `reserved-peers.txt` cũ trên server | `make pull-peer-config` → `make sync-peer-bundle DAPPS=1` → `make prepare-new-node TYPE=rpc` → `make sync DAPPS=1` → redeploy |
+| Peers file đúng nhưng vẫn 0 peer | Container RPC chưa đọc lại mount | `deploy-dapps.sh` tự `--force-recreate openethereum`; hoặc redeploy sau `ssh-clean-dapps` |
+| Netstats dashboard offline | `WS_SECRET` không khớp server 1 | Đồng bộ `WS_SECRET` trong `deploy.env`, `make sync DAPPS=1`, redeploy |
+
+**Không** dùng lệnh `docker` trực tiếp trên server khi có thể — dùng các target `make` ở trên.
 
 ---
 
@@ -461,6 +544,31 @@ Nếu offline:
 
 ## Troubleshooting
 
+### `db-init` / `stats-db-init` container `Exited (0)` — bình thường
+
+Hai container one-shot chuẩn bị quyền thư mục Postgres (`chown 2000:2000`) rồi thoát. Services thật là `db` và `stats-db` (phải `Up`, `healthy`).
+
+### Bad Gateway (502) trên explorer domain
+
+| Triệu chứng | Nguyên nhân | Cách xử lý |
+|-------------|-------------|------------|
+| `blockscout-frontend` `Restarting` | Tải logo/icon từ GitHub thất bại | Kiểm tra outbound `raw.githubusercontent.com` từ container; env phải dùng `https://` URL từ `EXPLORER_ASSETS_BASE_URL`, **không** `file://` |
+| Frontend crash `Congruity check failed` | GTBS custom env (`STAKING_VAULT`) | Bật `EXPLORER_CUSTOM_PROFILE=gtbs` — override set `SKIP_ENVS_VALIDATION=true` |
+| `blockscout-backend` down | Postgres `db` lỗi | Xem mục stats/Postgres bên dưới |
+
+```bash
+docker logs blockscout-frontend --tail 30
+docker ps -a | grep -E 'frontend|backend|stats'
+```
+
+### Stats lỗi / `stats.gtbsblockchain.com` 502
+
+| Log | Nguyên nhân | Cách xử lý |
+|-----|-------------|------------|
+| `pg_filenode.map: Permission denied` | `stats-db` data dir owner `root` thay vì `2000` | Chạy lại deploy: `./scripts/remote/deploy-explorer.sh` (tự chown), hoặc `chown -R 2000:2000 docker-compose/services/data/dpos-stats-db` rồi `docker compose restart stats-db stats` |
+
+Postgres data nằm tại: `docker-compose/services/data/dpos-blockscout-db` và `dpos-stats-db` (bind mount, **không** phải Docker named volume).
+
 ### `Missing peer bundle` khi deploy
 
 Chạy lại `make sync-peer-bundle EXPLORER=1` — `genesis/reserved-peers.txt` phải có trên server 3.
@@ -495,9 +603,12 @@ docker compose -f compose-dapps-traefik-v11.yml logs -f backend --tail=50
 ### Khởi động lại chỉ explorer (server 3)
 
 ```bash
-# SSH vào server 3, cd chain-dpos, rồi:
-docker compose -f compose-dapps-traefik-v11.yml restart \
-  traefik openethereum backend frontend stats visualizer
+# SSH vào server 3, cd chain-dpos — dùng cùng compose args như deploy-explorer.sh:
+./scripts/remote/deploy-explorer.sh
+# hoặc restart nhanh (không re-chown postgres):
+docker compose -f compose-dapps-traefik-v11.yml \
+  $(grep -q '^EXPLORER_CUSTOM_PROFILE=gtbs' envs/deploy.env && echo '-f overrides/v11/blockscout-frontend-gtbs.override.yml') \
+  restart traefik openethereum backend frontend stats visualizer
 ```
 
 ---
@@ -507,14 +618,14 @@ docker compose -f compose-dapps-traefik-v11.yml restart \
 **Server 3 (explorer):**
 
 - [ ] Server 1: chain chạy, `verify` pass, peer bundle đã capture về local repo
-- [ ] Local: `prepare-new-node TYPE=rpc` (peer bundle trong `genesis/`)
-- [ ] `deploy.env`: `SEED_SERVER`, `EXPLORER_SERVER`, `DAPPS_SERVER`, `REMOTE_DEPLOY_DIR`, chain identity khớp server 1
-- [ ] Domain explorer/RPC/stats/visualize → IP server 3
-- [ ] `make prepare-remote WITH_TRAEFIK=1`
+- [ ] Local: `prepare-new-node TYPE=rpc` (lần đầu; peer bundle trong `genesis/`)
+- [ ] `deploy.env`: secrets (`POSTGRES_PASSWORD`, `STATS_DB_PASSWORD`, `SECRET_KEY_BASE`), `EXPLORER_SERVER`, domains
+- [ ] `EXPLORER_CUSTOM_PROFILE=gtbs` + `EXPLORER_ASSETS_BASE_URL` (nếu dùng GTBS theme)
+- [ ] `make render WITH_TRAEFIK=1` (không `prepare-remote` khi chỉ deploy explorer)
 - [ ] `make sync EXPLORER=1` + `make sync-peer-bundle EXPLORER=1`
-- [ ] Firewall server 3: 80, 443, 30300
-- [ ] `deploy-explorer.sh` (không dùng `deploy-dapps.sh`)
-- [ ] Explorer HTTPS hoạt động, blocks đang index
+- [ ] Firewall server 3: 80, 443, 30300; outbound HTTPS tới GitHub
+- [ ] `make ssh-deploy-explorer` (không `deploy-dapps.sh`)
+- [ ] Explorer + stats HTTPS hoạt động, blocks đang index
 
 **Server DApps (netstats + …):**
 

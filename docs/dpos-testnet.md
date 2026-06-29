@@ -2,6 +2,8 @@
 
 Tài liệu operator chi tiết để **tạo và deploy chain DPoS mới** từ đầu. Xem tổng quan kiến trúc tại [dpos.md](./dpos.md).
 
+> **Runbook seed node end-to-end (local + remote):** [deploy-seed-node.md](./deploy-seed-node.md).
+
 ## Tổng quan luồng deploy
 
 Chain DPoS dùng **hai pha spec** (theo mô hình Fuse Network):
@@ -73,13 +75,11 @@ make dpos deploy WITH_TRAEFIK=1
 
 Build images v11 trước khi deploy (xem [explorer-v11.md](./explorer-v11.md)).
 
-### Validator-2 (thủ công — không tự động)
+### Validator-2 (server remote)
 
-`deploy-all.sh` **không** gọi `setup-validator-2-remote.sh`. Khi cần validator thứ hai:
+`deploy-all.sh` **không** tự thêm validator thứ hai. Dùng guide đầy đủ:
 
-1. Chạy chain trên server validator-2 (copy genesis bundle + `validator-2` keystore).
-2. Cập nhật `reserved_peers` trên cả validator-1 và validator-2 với enode đối phương.
-3. Tham khảo stub `scripts/setup-validator-2-remote.sh` và `compose-validator-2.yml`.
+**[setup-new-validator-remote.md](./setup-new-validator-remote.md)** — `make prepare-new-validator-local` → `sync-new-validator` → `ssh-new-validator-prepare` → `ssh-new-validator-up` → `add-peer-enode` trên seed.
 
 ### Di chuyển validator-1 sang server khác (outline)
 
@@ -538,17 +538,9 @@ Giữ chain data khi `down` (không `-v`). Dùng `down -v` khi muốn xoá volum
 
 ---
 
-## 12. Validator-2 (server khác) — chưa triển khai v1
+## 12. Validator-2 (server khác)
 
-Outline trong `scripts/setup-validator-2-remote.sh`:
-
-1. Copy bundle genesis sang server remote:
-   - `genesis/spec.json` (phase-2 cuối)
-   - `genesis/validator-1.enode`
-   - `genesis/contract-addresses.json`
-2. Tạo keystore validator-2, cấu hình `reserved_peers` → enode validator-1
-3. Stake `MIN_STAKE_TOKENS` qua Consensus contract
-4. Chạy `compose-validator-2.yml` (stub)
+Xem **[setup-new-validator-remote.md](./setup-new-validator-remote.md)** — luồng `make` trên máy operator, peering qua `add-peer-enode.sh`, stake `MIN_STAKE_TOKENS` sau khi sync ổn.
 
 ---
 

@@ -243,8 +243,8 @@ Reuse từ `chain-poa`: `docker-compose/services/*`, pattern overrides trong `ov
 
 ## Validator-2 và mở rộng
 
-- **Không bootnode:** peering qua `nodes/rpc/reserved-peers.txt` (nguồn từ `genesis/validator-1.enode`).
-- Validator-2 chạy trên server khác: outline `scripts/setup-validator-2-remote.sh` (chưa implement v1).
+- **Không bootnode:** peering qua `reserved-peers.txt` (static enode).
+- Validator mới trên server khác: **[setup-new-validator-remote.md](./setup-new-validator-remote.md)**.
 - Validator mới cần stake `MIN_STAKE_TOKENS` qua Consensus contract.
 
 ## Troubleshooting

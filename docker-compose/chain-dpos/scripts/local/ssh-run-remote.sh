@@ -24,11 +24,26 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help) usage; exit 0 ;;
+    -h|--help)
+      if [ ${#REMOTE_CMD[@]} -eq 0 ]; then
+        usage
+        exit 0
+      fi
+      REMOTE_CMD+=("$1")
+      ;;
+    --)
+      shift
+      REMOTE_CMD+=("$@")
+      break
+      ;;
     -*)
-      echo "Unknown option: $1" >&2
-      usage
-      exit 1
+      # Flags after remote command start belong to the remote script (e.g. --force, --with-traefik).
+      if [ ${#REMOTE_CMD[@]} -eq 0 ]; then
+        echo "Unknown option: $1" >&2
+        usage
+        exit 1
+      fi
+      REMOTE_CMD+=("$1")
       ;;
     *)
       if [ -z "${REMOTE}" ]; then

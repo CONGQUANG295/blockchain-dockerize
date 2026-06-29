@@ -67,6 +67,16 @@ peer_config_list_bundle_files() {
   if [ -f "${PATH_CONTRACT_ADDRESSES}" ]; then
     files+=("${PATH_CONTRACT_ADDRESSES}")
   fi
+  if [ -d "${PATH_GENESIS}/flats" ]; then
+    while IFS= read -r -d '' f; do
+      files+=("${f}")
+    done < <(find "${PATH_GENESIS}/flats" -maxdepth 1 -name '*_flat.sol' -print0 2>/dev/null || true)
+  fi
+  for extra in gtbs-deploy-config.json gtbs-deploy-manifest.json; do
+    if [ -f "${PATH_GENESIS}/${extra}" ]; then
+      files+=("${PATH_GENESIS}/${extra}")
+    fi
+  done
   if [ -d "${PATH_PEERS_DIR}" ]; then
     while IFS= read -r -d '' f; do
       files+=("${f}")

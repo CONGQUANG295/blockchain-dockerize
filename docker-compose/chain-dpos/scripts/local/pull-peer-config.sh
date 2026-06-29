@@ -26,6 +26,9 @@ Pull peer bundle from seed validator server to local (before RPC / new validator
   genesis/reserved-peers.txt
   genesis/validator-1.enode
   genesis/peers/*.enode
+  genesis/flats/              (GTBS: flattened contracts after deploy)
+  genesis/gtbs-deploy-config.json
+  genesis/gtbs-deploy-manifest.json
 
 On server, runs export-peer-config.sh first (refresh enode + reserved-peers).
 
@@ -153,10 +156,11 @@ if [ "${REFRESH_ON_SERVER}" = true ]; then
 fi
 
 echo "=== Pull peer bundle to local ==="
-for artifact in spec.json contract-addresses.json reserved-peers.txt validator-1.enode; do
+for artifact in spec.json contract-addresses.json reserved-peers.txt validator-1.enode gtbs-deploy-config.json gtbs-deploy-manifest.json; do
   run_rsync_pull "${REMOTE_GENESIS}/${artifact}" "${GENESIS_DIR}/"
 done
 run_rsync_pull "${REMOTE_GENESIS}/peers/" "${GENESIS_DIR}/peers/"
+run_rsync_pull "${REMOTE_GENESIS}/flats/" "${GENESIS_DIR}/flats/"
 
 echo ""
 echo "Local peer bundle: ${GENESIS_DIR}/"

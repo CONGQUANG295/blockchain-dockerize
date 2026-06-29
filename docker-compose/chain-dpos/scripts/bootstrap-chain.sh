@@ -39,6 +39,7 @@ source envs/dpos.chain.env
 set +a
 
 echo "=== Phase B: start validator-1 ==="
+./scripts/ensure-genesis-spec.sh
 # shellcheck source=lib/compose.sh
 source "${ROOT_DIR}/scripts/lib/compose.sh"
 chain_dpos_compose "${ROOT_DIR}" -f compose-validator-1.yml up -d openethereum netstats-api

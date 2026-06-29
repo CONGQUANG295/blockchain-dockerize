@@ -13,13 +13,20 @@ services:
       INITIAL_VALIDATOR_ADDRESS: ${VALIDATOR_1_ADDRESS}
       INITIAL_SUPPLY_GWEI: ${INITIAL_SUPPLY_GWEI}
       CONTRACT_ADDRESSES_OUT: /app/genesis/contract-addresses.json
+      CONTRACT_ARTIFACTS_OUT: /app/genesis
       VALIDATOR_KEYSTORE_DIR: /app/keys
       VALIDATOR_PASSWORD_FILE: /app/secrets/node.pwd
       ENABLE_CUSTOM_STAKING: ${ENABLE_CUSTOM_STAKING:-false}
+      GTBS_STAKING_ENV: /gtbs/env/gtbs-staking.env
+      DPOS_CONTRACT_ENV: /gtbs/env/dpos.contract.env
+      DPOS_CHAIN_ENV: /gtbs/env/dpos.chain.env
     volumes:
       - ./genesis:/app/genesis
       - ./nodes/validator-1/keystore:/app/keys:ro
       - ./nodes/validator-1/node.pwd:/app/secrets/node.pwd:ro
+      - ./envs/gtbs-staking.env:/gtbs/env/gtbs-staking.env:ro
+      - ./envs/dpos.contract.env:/gtbs/env/dpos.contract.env:ro
+      - ./envs/dpos.chain.env:/gtbs/env/dpos.chain.env:ro
     command: []
     networks:
       - validator

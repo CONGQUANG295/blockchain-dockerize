@@ -9,23 +9,42 @@ Enable GTBS custom staking contracts when deploying a DPoS chain. Standard chain
 1. In `envs/deploy.env`:
    ```bash
    ENABLE_CUSTOM_STAKING=true
+   PREMINE_BALANCE_WEI=1500000000000000000000000000   # 1.5B premine
+   MAX_SUPPLY_WEI=3000000000000000000000000000          # 3B cap (premine + mining pool)
+   BLOCK_TIME_SECONDS=3                               # BLOCKS_PER_YEAR auto-derived (31536000 / block time)
    MAX_STAKE_TOKENS=300000000
    MIN_DELEGATION_TOKENS=10000
    MAX_DELEGATION_PER_WALLET_TOKENS=100000
    NET_APY_PERCENT=4
    ANNUAL_UNLOCK_CAP_TOKENS=500000
    ```
+   `INITIAL_SUPPLY_GWEI` and `BLOCKS_PER_YEAR` are **derived** by `render-envs.sh` — do not set them manually.
 
-2. Render envs and bootstrap:
+2. Prepare (patches `.sol`, compile, test, genesis):
    ```bash
-   ./scripts/render-envs.sh envs/deploy.env
-   ./scripts/bootstrap-chain.sh
+   make dpos gtbs-prepare
+   make dpos sync SERVER=user@host
+   make dpos ssh-deploy-validator SERVER=user@host
+   ./scripts/verify-contracts-transition.sh
    ```
 
-3. Rebuild deployer image if contracts changed:
+3. Rebuild deployer image when contract sources change:
    ```bash
    docker build -f blockchain-docker-base/docker/Dockerfile.dpos-deployer -t dpos-deployer:0.0.1 blockchain-docker-base
    ```
+   The deploy container re-patches and recompiles from mounted env before deploy (avoids stale `.example` defaults in the image).
+
+## Tokenomics (new chain)
+
+| Pool | Amount |
+|------|--------|
+| Genesis premine | `PREMINE_BALANCE_WEI` at `PREMINE_ADDRESS` |
+| Mining (block rewards) | `MAX_SUPPLY_WEI - PREMINE_BALANCE_WEI` |
+| Max supply | `MAX_SUPPLY_WEI` (enforced on-chain in `BlockReward`) |
+
+Governance can call `setNetApyBps(0)` when supply nears cap. Monitor with `./scripts/check-supply-cap.sh`.
+
+## Enable (manual render)
 
 ## Deployed contracts
 
@@ -86,3 +105,12 @@ Package `custom-staking-contracts` uses **solc 0.4.24** (same as standard `dpos-
 cd blockchain-docker-base/resources/custom-staking-contracts
 npm test
 ```
+
+Optional Blockscout verify: flattened sources are written automatically during deploy:
+
+- **Local prepare** (`make dpos gtbs-prepare`): `genesis/flats/*.sol`, `genesis/gtbs-deploy-config.json`, `genesis/gtbs-deploy-manifest.json`
+- **Server deploy** (container `dpos-deployer`): same files under `genesis/` via volume mount
+
+After seed deploy, pull to operator: `make dpos pull-peer-config` (includes `genesis/flats/`).
+
+Flatten reflects env-patched Solidity constants (`MIN_STAKE`, `MAX_SUPPLY`, `BLOCKS_PER_YEAR`, …). Initialize args (`netApyBps`, staking vault timings, premine) are in `gtbs-deploy-manifest.json` → `blockscoutVerify.initializeParams`.

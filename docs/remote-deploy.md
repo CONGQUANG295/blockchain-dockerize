@@ -2,6 +2,8 @@
 
 Triển khai chain DPoS lên server **không clone git trên server**. Operator chuẩn bị trên máy local; server chỉ cài môi trường, `docker pull`, và `docker compose up`.
 
+> **Deploy seed node từ đầu:** xem [deploy-seed-node.md](./deploy-seed-node.md) — hướng dẫn end-to-end cho validator-1 (seed).
+
 > **Makefile:** Các bước dưới có thể chạy qua `make` từ root `blockchain-dock/`. Xem [docs/makefile.md](../../docs/makefile.md).
 
 ## Luồng tổng quan
@@ -200,6 +202,27 @@ make deploy-remote-dapps
 
 ### Chỉ DApps (chain đã chạy)
 
+Từ máy operator (khuyến nghị):
+
+```bash
+make prepare-new-node TYPE=rpc
+make render WITH_TRAEFIK=1
+make sync DAPPS=1
+make sync-peer-bundle DAPPS=1
+make ssh-deploy-dapps
+```
+
+Redeploy sạch RPC data:
+
+```bash
+make ssh-clean-dapps PRUNE_IMAGES=1
+make sync-peer-bundle DAPPS=1
+make prepare-new-node TYPE=rpc && make sync DAPPS=1
+make ssh-deploy-dapps SKIP_HEALTH=1
+```
+
+Hoặc trên server sau khi SSH:
+
 ```bash
 ./scripts/remote/deploy-dapps.sh
 ```
@@ -271,8 +294,10 @@ Trước `deploy-dapps.sh` với Traefik:
 | `scripts/local/provision-remote.sh` | Operator | SSH provision server | `make dpos provision-remote` |
 | `scripts/remote/provision-server.sh` | Server | Cài Docker + tools | _(chạy trực tiếp trên server)_ |
 | `scripts/remote/deploy-validator.sh` | Server | Chain + validator-app | `make dpos ssh-deploy-validator` hoặc `make deploy-remote-validator` trên server |
-| `scripts/remote/deploy-dapps.sh` | Server DApps | netstats-dashboard, docs, Traefik (không Blockscout/RPC) | `make dpos ssh-deploy-dapps` (DAPPS_SERVER) |
-| `scripts/remote/deploy-explorer.sh` | Server | Explorer only (no netstats) | `make dpos ssh-deploy-explorer` |
+| `scripts/remote/deploy-dapps.sh` | Server DApps | RPC archive + netstats-dashboard, docs, Traefik | `make ssh-deploy-dapps` (DAPPS_SERVER) |
+| `scripts/remote/deploy-explorer.sh` | Server | Explorer only (no netstats) | `make ssh-deploy-explorer` |
+| `scripts/remote/clean-explorer.sh` | Server | Wipe explorer RPC + Blockscout DB | `make ssh-clean-explorer EXPLORER=1` |
+| `scripts/remote/clean-dapps.sh` | Server DApps | Wipe DApps RPC chain data | `make ssh-clean-dapps DAPPS=1` |
 | `scripts/build-and-push.sh --push` | Operator / CI | Push images Docker Hub | `make build push DOCKERHUB_NAMESPACE=...` |
 
 ---

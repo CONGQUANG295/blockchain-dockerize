@@ -4,6 +4,8 @@ DPoS chains use **Blockscout backend 11.2.1** + **frontend 2.8.1** with optional
 
 For optional GTBS branding and DPoS widgets, see [explorer-custom-theme.md](./explorer-custom-theme.md).
 
+For **My Account** login (email OTP via Auth0), see [explorer-auth0-login.md](./explorer-auth0-login.md).
+
 > **Note:** POA reference stacks may still use Blockscout v4 monolith. See [explorer-v4.1.8.md](./explorer-v4.1.8.md).
 
 ## Architecture

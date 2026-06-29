@@ -20,6 +20,9 @@ Writes the peer bundle used to configure RPC nodes and new validators:
 
   genesis/spec.json                 (already present after patch-spec)
   genesis/contract-addresses.json   (after deploy)
+  genesis/flats/                    (GTBS: flattened contracts for Blockscout)
+  genesis/gtbs-deploy-config.json   (GTBS: initialize params from env)
+  genesis/gtbs-deploy-manifest.json (GTBS: addresses + verify reference)
   genesis/validator-1.enode         (this node's public enode)
   genesis/peers/<peer-id>.enode     (copy of seed enode)
   genesis/reserved-peers.txt        (bootstrap enode list — one per line)

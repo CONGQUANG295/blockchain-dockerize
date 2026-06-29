@@ -1,11 +1,9 @@
 # Optional GTBS explorer branding overlay.
-# Usage (with EXPLORER_CUSTOM_PROFILE=gtbs in deploy.env):
-#   docker compose -f compose-dapps-traefik-v11.yml \
-#     -f overrides/v11/blockscout-frontend-gtbs.override.yml up -d
+# Applied automatically by deploy-explorer.sh when EXPLORER_CUSTOM_PROFILE=gtbs in deploy.env.
+# Sets SKIP_ENVS_VALIDATION for custom NEXT_PUBLIC_* vars not embedded at image build time.
+# Logo/icon URLs come from EXPLORER_ASSETS_BASE_URL (GitHub) — no local volume mount required.
 
 services:
   frontend:
-    volumes:
-      # file:///assets/configs/* (download_assets at startup) + static /assets/configs/* in browser
-      - ../../assets/explorer/gtbs:/assets/configs:ro
-      - ../../assets/explorer/gtbs:/app/public/assets/configs:ro
+    environment:
+      SKIP_ENVS_VALIDATION: "true"

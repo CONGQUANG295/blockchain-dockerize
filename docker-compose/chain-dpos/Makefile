@@ -10,7 +10,7 @@ include make/include.mk
 .PHONY: ssh-new-validator-prepare ssh-new-validator-up ssh-new-validator-down ssh-new-validator-logs
 .PHONY: validator-2-prepare-local sync-validator-2 prepare-validator-2 pull-validator-1-enode
 .PHONY: open-p2p-port ssh-open-p2p-port
-.PHONY: ssh-deploy-validator ssh-stop-validator-nodes ssh-install-make ssh-deploy-dapps ssh-deploy-explorer gtbs-prepare
+.PHONY: ssh-deploy-validator ssh-stop-validator-nodes ssh-install-make ssh-deploy-dapps ssh-deploy-explorer ssh-clean-explorer ssh-clean-dapps gtbs-prepare
 
 init: ## Copy env mẫu (deploy.env, dpos.chain.env, dpos.contract.env)
 	cp -n envs/deploy.env.example envs/deploy.env || true
@@ -211,6 +211,12 @@ deploy-remote-dapps: ## Server: deploy-dapps.sh (RPC + netstats + docs + Traefik
 deploy-remote-explorer: ## Server: deploy-explorer.sh (Blockscout only, no netstats-dashboard)
 	$(SCRIPTS)/remote/deploy-explorer.sh
 
+deploy-remote-clean-explorer: ## Server: clean-explorer.sh (wipe RPC + Blockscout DB data)
+	$(SCRIPTS)/remote/clean-explorer.sh --force
+
+deploy-remote-clean-dapps: ## Server: clean-dapps.sh (wipe DApps RPC chain data)
+	$(SCRIPTS)/remote/clean-dapps.sh --force $(if $(filter 1,$(PRUNE_IMAGES)),--prune-images,)
+
 ssh-deploy-validator: ## Chạy deploy-validator trên server qua SSH
 	@test -n "$(SEED_TARGET)" || (echo "Usage: make ssh-deploy-validator [SERVER=user@host] — or set SEED_SERVER in envs/deploy.env" && exit 1)
 	@$(SCRIPTS)/local/ssh-run-remote.sh "$(SEED_TARGET)" "$(REMOTE_DIR)" \
@@ -231,12 +237,22 @@ ssh-stop-validator-nodes: ## SSH: dừng validator stack + deployer (giữ chain
 ssh-deploy-dapps: ## SSH: deploy-dapps trên DAPPS_SERVER (RPC + DApps; không Blockscout)
 	@test -n "$(DAPPS_TARGET)" || (echo "Usage: make ssh-deploy-dapps [SERVER=user@host] — or set DAPPS_SERVER in envs/deploy.env" && exit 1)
 	$(SCRIPTS)/local/ssh-run-remote.sh "$(DAPPS_TARGET)" "$(REMOTE_DIR)" \
-		./scripts/remote/deploy-dapps.sh
+		./scripts/remote/deploy-dapps.sh $(if $(filter 1,$(SKIP_HEALTH)),--skip-health,)
+
+ssh-clean-dapps: ## SSH: wipe DApps RPC data + stop stack trên DAPPS_SERVER
+	@test -n "$(DAPPS_TARGET)" || (echo "Usage: make ssh-clean-dapps [SERVER=user@host] — or set DAPPS_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(DAPPS_TARGET)" "$(REMOTE_DIR)" \
+		./scripts/remote/clean-dapps.sh --force $(if $(filter 1,$(PRUNE_IMAGES)),--prune-images,)
 
 ssh-deploy-explorer: ## Chạy deploy-explorer trên server qua SSH (EXPLORER_SERVER default)
 	@test -n "$(EXPLORER_TARGET)" || (echo "Usage: make ssh-deploy-explorer [SERVER=user@host] — or set EXPLORER_SERVER in envs/deploy.env" && exit 1)
 	$(SCRIPTS)/local/ssh-run-remote.sh "$(EXPLORER_TARGET)" "$(REMOTE_DIR)" \
 		./scripts/remote/deploy-explorer.sh
+
+ssh-clean-explorer: ## SSH: wipe explorer RPC + Blockscout DB data trên EXPLORER_SERVER
+	@test -n "$(EXPLORER_TARGET)" || (echo "Usage: make ssh-clean-explorer [SERVER=user@host] — or set EXPLORER_SERVER in envs/deploy.env" && exit 1)
+	$(SCRIPTS)/local/ssh-run-remote.sh "$(EXPLORER_TARGET)" "$(REMOTE_DIR)" \
+		./scripts/remote/clean-explorer.sh --force
 
 gtbs-prepare: ## Chuẩn bị deploy GTBS (ENABLE_CUSTOM_STAKING=true trong deploy.env)
 	@grep -q 'ENABLE_CUSTOM_STAKING=true' envs/deploy.env || \

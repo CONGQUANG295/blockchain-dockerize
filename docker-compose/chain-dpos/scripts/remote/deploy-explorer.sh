@@ -75,13 +75,19 @@ set -a
 # shellcheck disable=SC1090
 source envs/db.env
 source envs/blockscout-stats.env
+source envs/deploy.env
 set +a
 
-COMPOSE_ARGS=(-f compose-dapps-traefik-v11.yml)
+mapfile -t COMPOSE_ARGS < <(remote_explorer_compose_args "${ROOT_DIR}")
+if [ "${EXPLORER_CUSTOM_PROFILE:-}" = "gtbs" ]; then
+  echo "GTBS explorer profile enabled (GitHub assets + SKIP_ENVS_VALIDATION)"
+fi
 
 echo "=== Pull + start explorer stack (no netstats-dashboard) ==="
 docker compose "${COMPOSE_ARGS[@]}" pull "${EXPLORER_SERVICES[@]}"
 remote_ensure_postgres_data_permissions "${COMPOSE_ARGS[@]}"
+# Restart DB if already running — picks up fixed bind-mount permissions
+docker compose "${COMPOSE_ARGS[@]}" restart db stats-db 2>/dev/null || true
 docker compose "${COMPOSE_ARGS[@]}" up -d "${EXPLORER_SERVICES[@]}"
 
 if [ "${SKIP_HEALTH}" = false ]; then

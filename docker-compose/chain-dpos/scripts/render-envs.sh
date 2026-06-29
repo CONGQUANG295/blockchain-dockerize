@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=lib-images.sh
 source "${ROOT_DIR}/scripts/lib-images.sh"
+# shellcheck source=lib/wei-math.sh
+source "${ROOT_DIR}/scripts/lib/wei-math.sh"
 WITH_TRAEFIK=false
 DEPLOY_ENV=""
 
@@ -43,7 +45,17 @@ NETWORK_TYPE="${NETWORK_TYPE:-testnet}"
 BLOCK_TIME_SECONDS="${BLOCK_TIME_SECONDS:-5}"
 CONTRACT_TRANSITION_BLOCK="${CONTRACT_TRANSITION_BLOCK:-100}"
 VALIDATOR_BALANCE_WEI="${VALIDATOR_BALANCE_WEI:-10000000000000000000000}"
-INITIAL_SUPPLY_GWEI="${INITIAL_SUPPLY_GWEI:-300000000}"
+INITIAL_SUPPLY_GWEI="$(wei_div_gwei "${PREMINE_BALANCE_WEI}")"
+BLOCKS_PER_YEAR=$(( 31536000 / BLOCK_TIME_SECONDS ))
+
+if [ $(( 31536000 % BLOCK_TIME_SECONDS )) -ne 0 ]; then
+  echo "BLOCK_TIME_SECONDS must divide 31536000 evenly (got ${BLOCK_TIME_SECONDS})" >&2
+  exit 1
+fi
+
+if [ "${ENABLE_CUSTOM_STAKING:-false}" = "true" ]; then
+  : "${MAX_SUPPLY_WEI:?MAX_SUPPLY_WEI required when ENABLE_CUSTOM_STAKING=true}"
+fi
 
 if [ "${WITH_TRAEFIK}" = true ]; then
   : "${EXPLORER_SERVER_NAME:?}"
@@ -77,6 +89,7 @@ PREMINE_ADDRESS=${PREMINE_ADDRESS}
 PREMINE_BALANCE_WEI=${PREMINE_BALANCE_WEI}
 VALIDATOR_BALANCE_WEI=${VALIDATOR_BALANCE_WEI}
 INITIAL_SUPPLY_GWEI=${INITIAL_SUPPLY_GWEI}
+MAX_SUPPLY_WEI=${MAX_SUPPLY_WEI:-}
 EOF
 
 if [ "${ENABLE_EIP1559:-false}" = "true" ]; then
@@ -114,7 +127,7 @@ if [ "${ENABLE_CUSTOM_STAKING:-false}" = "true" ]; then
   if [ -f "${GTBS_SRC}" ]; then
     cp "${GTBS_SRC}" "${ENVS_DIR}/gtbs-staking.env"
     # Override from deploy.env when set
-    for key in MAX_STAKE_TOKENS MIN_DELEGATION_TOKENS MAX_DELEGATION_PER_WALLET_TOKENS NET_APY_PERCENT ANNUAL_UNLOCK_CAP_TOKENS UNSTAKE_FEE_BPS DELEGATOR_LOCK_DAYS ANNUAL_UNLOCK_PERIOD_DAYS RELEASE_DELAY_DAYS BLOCK_TIME_SECONDS BLOCKS_PER_YEAR; do
+    for key in MAX_STAKE_TOKENS MIN_STAKE_TOKENS NET_APY_PERCENT ANNUAL_UNLOCK_CAP_TOKENS UNSTAKE_FEE_BPS DELEGATOR_LOCK_DAYS ANNUAL_UNLOCK_PERIOD_DAYS RELEASE_DELAY_DAYS BLOCK_TIME_SECONDS; do
       val="${!key:-}"
       if [ -n "${val}" ]; then
         if grep -q "^${key}=" "${ENVS_DIR}/gtbs-staking.env"; then
@@ -124,6 +137,11 @@ if [ "${ENABLE_CUSTOM_STAKING:-false}" = "true" ]; then
         fi
       fi
     done
+    if grep -q "^BLOCKS_PER_YEAR=" "${ENVS_DIR}/gtbs-staking.env"; then
+      sed -i "s|^BLOCKS_PER_YEAR=.*|BLOCKS_PER_YEAR=${BLOCKS_PER_YEAR}|" "${ENVS_DIR}/gtbs-staking.env"
+    else
+      echo "BLOCKS_PER_YEAR=${BLOCKS_PER_YEAR}" >> "${ENVS_DIR}/gtbs-staking.env"
+    fi
   fi
 fi
 
@@ -321,10 +339,13 @@ cat > "${ENVS_DIR}/netstats-dashboard.env" <<EOF
 WS_SECRET=${WS_SECRET}
 WS_HOST=host.docker.internal
 PORT=3006
+PAGE_TITLE=${NETSTATS_PAGE_TITLE:-${COIN_NAME} Network Status}
+FAVICON_URL=${NETSTATS_FAVICON_URL:-${EXPLORER_ASSETS_BASE_URL}/symbol.svg}
 EOF
 
 cat > "${ENVS_DIR}/netstats-api.env" <<EOF
 WS_SECRET=${WS_SECRET}
+WS_SERVER=wss://${STATUS_SERVER_NAME:-status.local}
 EOF
 
 # Legacy blockscout v4 env (CHAIN_ID only) for any tooling still reading it

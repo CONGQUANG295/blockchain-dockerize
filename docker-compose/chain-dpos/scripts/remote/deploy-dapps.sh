@@ -103,6 +103,8 @@ fi
 echo "=== Pull + start DApps + RPC (no Blockscout) ==="
 docker compose "${COMPOSE_ARGS[@]}" pull "${DAPPS_SERVICES[@]}"
 docker compose "${COMPOSE_ARGS[@]}" up -d "${DAPPS_SERVICES[@]}"
+# Recreate RPC so reserved-peers / config bind-mount changes apply after sync.
+docker compose "${COMPOSE_ARGS[@]}" up -d --force-recreate openethereum
 
 if [ "${SKIP_HEALTH}" = false ]; then
   remote_health_check_dapps

@@ -40,9 +40,20 @@ EOF
   echo "Wrote ${NV_ENV_FILE}"
 }
 
+new_validator_instance_name() {
+  local node_id="$1"
+  if [[ "${node_id}" =~ ^validator-([0-9]+)$ ]]; then
+    echo "Validator ${BASH_REMATCH[1]}"
+  else
+    echo "${node_id}"
+  fi
+}
+
 new_validator_write_override() {
   local root="$1"
   local node_id="$2"
+  local instance_name
+  instance_name="$(new_validator_instance_name "${node_id}")"
   new_validator_compose_paths "${root}" "${node_id}"
   mkdir -p "${root}/overrides" "${NV_NODE_DIR}/data"
   cat > "${NV_OVERRIDE}" <<EOF
@@ -73,7 +84,7 @@ services:
       - ../chain-dpos/envs/netstats-dashboard.env
       - ../chain-dpos/envs/netstats-api.env
     environment:
-      INSTANCE_NAME: ${node_id}
+      INSTANCE_NAME: ${instance_name}
       RPC_HOST: openethereum
 EOF
   echo "Wrote ${NV_OVERRIDE}"

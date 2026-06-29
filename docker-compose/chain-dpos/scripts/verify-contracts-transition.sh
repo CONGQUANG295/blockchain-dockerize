@@ -30,6 +30,21 @@ IS_VALIDATOR_SELECTOR="0xfacd743b"
 VALIDATORS_LENGTH_SELECTOR="0x40c9cdeb"
 INFLATION_SELECTOR="0x6d20d6ae"
 NET_APY_BPS_SELECTOR="0xb7b6207e"
+GET_MAX_SUPPLY_SELECTOR="0x4c0f38c2"
+GET_REMAINING_BUDGET_SELECTOR="0x45cb5ec4"
+GET_BLOCKS_PER_YEAR_SELECTOR="0x741de148"
+GET_TOTAL_SUPPLY_SELECTOR="0xc4e41b22"
+
+# Bash arithmetic overflows above ~2^63; use python3 for uint256 wei values.
+hex_to_dec() {
+  local hex="$1"
+  [ -n "${hex}" ] || return 1
+  python3 -c "print(int('${hex}', 16))" 2>/dev/null || return 1
+}
+
+dec_ge() {
+  python3 -c "import sys; sys.exit(0 if int(sys.argv[1]) >= int(sys.argv[2]) else 1)" "$1" "$2"
+}
 
 rpc_raw() {
   local method="$1"
@@ -176,6 +191,48 @@ fi
 if [ "${REWARD_OK}" = false ]; then
   echo "BlockReward check failed (contract ${REWARD})" >&2
   exit 1
+fi
+
+if [ "${ENABLE_CUSTOM_STAKING}" = "true" ]; then
+  : "${MAX_SUPPLY_WEI:?MAX_SUPPLY_WEI required in dpos.chain.env}"
+  EXPECTED_BPY=$(( 31536000 / BLOCK_TIME_SECONDS ))
+
+  MAX_SUPPLY_DATA="$(eth_call "${REWARD_LC}" "${GET_MAX_SUPPLY_SELECTOR}")"
+  BLOCKS_DATA="$(eth_call "${REWARD_LC}" "${GET_BLOCKS_PER_YEAR_SELECTOR}")"
+  TOTAL_SUPPLY_DATA="$(eth_call "${REWARD_LC}" "${GET_TOTAL_SUPPLY_SELECTOR}")"
+  REMAINING_DATA="$(eth_call "${REWARD_LC}" "${GET_REMAINING_BUDGET_SELECTOR}")"
+
+  if ! is_truthy_word "${MAX_SUPPLY_DATA}"; then
+    echo "getMaxSupply() returned empty" >&2
+    exit 1
+  fi
+  MAX_SUPPLY_ONCHAIN="$(hex_to_dec "${MAX_SUPPLY_DATA}")"
+  if [ "${MAX_SUPPLY_ONCHAIN}" != "${MAX_SUPPLY_WEI}" ]; then
+    echo "getMaxSupply mismatch: on-chain ${MAX_SUPPLY_ONCHAIN}, env ${MAX_SUPPLY_WEI}" >&2
+    exit 1
+  fi
+  echo "  getMaxSupply: ${MAX_SUPPLY_ONCHAIN}"
+
+  BLOCKS_ONCHAIN="$(hex_to_dec "${BLOCKS_DATA}")"
+  if [ "${BLOCKS_ONCHAIN}" != "${EXPECTED_BPY}" ]; then
+    echo "getBlocksPerYear mismatch: on-chain ${BLOCKS_ONCHAIN}, expected ${EXPECTED_BPY}" >&2
+    exit 1
+  fi
+  echo "  getBlocksPerYear: ${BLOCKS_ONCHAIN}"
+
+  if is_truthy_word "${TOTAL_SUPPLY_DATA}"; then
+    TOTAL_SUPPLY_ONCHAIN="$(hex_to_dec "${TOTAL_SUPPLY_DATA}")"
+    if ! dec_ge "${TOTAL_SUPPLY_ONCHAIN}" "${PREMINE_BALANCE_WEI}"; then
+      echo "getTotalSupply ${TOTAL_SUPPLY_ONCHAIN} < PREMINE_BALANCE_WEI ${PREMINE_BALANCE_WEI}" >&2
+      exit 1
+    fi
+    echo "  getTotalSupply: ${TOTAL_SUPPLY_ONCHAIN}"
+  fi
+
+  if is_truthy_word "${REMAINING_DATA}"; then
+    REMAINING_ONCHAIN="$(hex_to_dec "${REMAINING_DATA}")"
+    echo "  getRemainingMiningBudget: ${REMAINING_ONCHAIN}"
+  fi
 fi
 
 echo "Transition verified at block >= ${TRANSITION}"

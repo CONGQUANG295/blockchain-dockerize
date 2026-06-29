@@ -72,6 +72,38 @@ RENDER_ARGS=()
 echo "=== Render env files ==="
 ./scripts/render-envs.sh envs/deploy.env "${RENDER_ARGS[@]}"
 
+GTBS_DIR="${DOCK_ROOT}/blockchain-docker-base/resources/custom-staking-contracts"
+
+if [ "${ENABLE_CUSTOM_STAKING:-false}" = "true" ]; then
+  echo "=== GTBS: patch contracts from env ==="
+  export GTBS_STAKING_ENV="${ROOT_DIR}/envs/gtbs-staking.env"
+  export DPOS_CONTRACT_ENV="${ROOT_DIR}/envs/dpos.contract.env"
+  export DPOS_CHAIN_ENV="${ROOT_DIR}/envs/dpos.chain.env"
+  (cd "${GTBS_DIR}" && node scripts/generate-gtbs-contract-config.js)
+  (cd "${GTBS_DIR}" && node scripts/generate-gtbs-config.js)
+
+  echo "=== GTBS: compile + test ==="
+  (cd "${GTBS_DIR}" && npm run compile && npm test)
+
+  echo "=== GTBS: flatten → genesis/flats ==="
+  CONTRACT_ARTIFACTS_OUT="${ROOT_DIR}/genesis" \
+    bash "${GTBS_DIR}/scripts/export-deploy-artifacts.sh"
+  node "${GTBS_DIR}/scripts/write-deploy-manifest.js" "${ROOT_DIR}/genesis"
+
+  echo "=== GTBS: validate tokenomics ==="
+  ./scripts/validate-tokenomics.sh
+
+  cat <<'EOF'
+
+=== GTBS re-init checklist (new chain only) ===
+Before bootstrap on a fresh chain, wipe:
+  - genesis/spec.json and genesis/contract-addresses.json (regenerated below)
+  - Validator chain DB / data dirs on all nodes
+  - Blockscout DB if re-indexing from genesis
+
+EOF
+fi
+
 echo "=== Prepare genesis (phase A) ==="
 ./scripts/prepare-genesis.sh
 

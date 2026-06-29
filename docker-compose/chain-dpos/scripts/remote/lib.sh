@@ -73,9 +73,48 @@ remote_wait_for_rpc() {
 
 # db/stats-db run as UID 2000; bind-mount data may be root-owned after a bad first boot.
 # `docker compose up` skips one-shot init containers that already exited — run explicitly.
+remote_postgres_data_dirs() {
+  local chain_root="$1"
+  echo "${chain_root}/../services/data/dpos-blockscout-db"
+  echo "${chain_root}/../services/data/dpos-stats-db"
+}
+
+remote_chown_postgres_data_dirs() {
+  local chain_root="$1"
+  local dir
+  while IFS= read -r dir; do
+    [ -d "${dir}" ] || continue
+    chown -R 2000:2000 "${dir}"
+    chmod 700 "${dir}"
+    echo "postgres data permissions set (2000:2000) on ${dir}"
+  done < <(remote_postgres_data_dirs "${chain_root}")
+}
+
 remote_ensure_postgres_data_permissions() {
   local -a compose_args=("$@")
+  local chain_root
+  chain_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
   echo "=== Ensure Postgres data dir ownership (UID 2000) ==="
+  # Pre-chown before init — avoids root-owned files if postgres started without init
+  remote_chown_postgres_data_dirs "${chain_root}"
   docker compose "${compose_args[@]}" run --rm --no-deps db-init
   docker compose "${compose_args[@]}" run --rm --no-deps stats-db-init
+  remote_chown_postgres_data_dirs "${chain_root}"
+}
+
+# Compose files for explorer deploy (GTBS profile adds frontend override).
+remote_explorer_compose_args() {
+  local chain_root="$1"
+  local -a args=(-f compose-dapps-traefik-v11.yml)
+  if [ -f "${chain_root}/envs/deploy.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${chain_root}/envs/deploy.env"
+    set +a
+    if [ "${EXPLORER_CUSTOM_PROFILE:-}" = "gtbs" ]; then
+      args+=(-f overrides/v11/blockscout-frontend-gtbs.override.yml)
+    fi
+  fi
+  printf '%s\n' "${args[@]}"
 }

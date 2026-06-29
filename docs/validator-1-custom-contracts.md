@@ -200,7 +200,15 @@ Xem [explorer-custom-theme.md](./explorer-custom-theme.md).
 
 ## Bước 3 — Chuẩn bị genesis (local)
 
-Target `gtbs-prepare` kiểm tra `ENABLE_CUSTOM_STAKING=true`, rồi chạy `prepare-deploy.sh` (render env, keystore validator-1, `genesis/spec.phase-1.json`).
+Target `gtbs-prepare` kiểm tra `ENABLE_CUSTOM_STAKING=true`, rồi chạy `prepare-deploy.sh`:
+
+1. `render-envs.sh` — derive `INITIAL_SUPPLY_GWEI`, `BLOCKS_PER_YEAR`, `MAX_SUPPLY_WEI`
+2. `generate-gtbs-contract-config.js` — patch `BlockReward.sol` / `ConsensusUtils.sol` từ env
+3. `npm run compile && npm test` trong `custom-staking-contracts`
+4. `validate-tokenomics.sh` — grep patched constants + env math
+5. `prepare-genesis.sh` — premine = `PREMINE_BALANCE_WEI`
+
+**Re-init chain mới:** xóa DB chain + `genesis/contract-addresses.json` trước bootstrap.
 
 ```bash
 cd blockchain-dock
@@ -285,6 +293,10 @@ docker compose -f compose-validator-1.yml --profile consensus ps
 
 # Contract addresses (có stakingVault khi GTBS)
 jq . genesis/contract-addresses.json
+
+# Flattened contracts + Blockscout verify reference (GTBS, sau deploy)
+ls genesis/flats/
+jq .blockscoutVerify.initializeParams genesis/gtbs-deploy-manifest.json
 
 # Enode cho validator-2 / RPC peers
 cat genesis/validator-1.enode
